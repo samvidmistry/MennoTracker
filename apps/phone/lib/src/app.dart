@@ -71,28 +71,24 @@ class _HomeScaffoldState extends State<HomeScaffold> {
 
   static const _tabs = [
     _HomeTab(
-      route: TodayRoute.path,
       label: 'Today',
       icon: Icons.today_outlined,
       selectedIcon: Icons.today,
       child: TodayScreen(),
     ),
     _HomeTab(
-      route: WorkoutRoute.path,
       label: 'Workout',
       icon: Icons.fitness_center_outlined,
       selectedIcon: Icons.fitness_center,
-      child: WorkoutStartPrompt(),
+      child: WorkoutTab(),
     ),
     _HomeTab(
-      route: HistoryRoute.path,
       label: 'History',
       icon: Icons.history_outlined,
       selectedIcon: Icons.history,
       child: HistoryScreen(),
     ),
     _HomeTab(
-      route: SettingsRoute.path,
       label: 'Settings',
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
@@ -119,7 +115,6 @@ class _HomeScaffoldState extends State<HomeScaffold> {
       return;
     }
     setState(() => _selectedIndex = index);
-    Navigator.of(context).pushReplacementNamed(_tabs[index].route);
   }
 
   @override
@@ -150,14 +145,12 @@ class _HomeScaffoldState extends State<HomeScaffold> {
 
 class _HomeTab {
   const _HomeTab({
-    required this.route,
     required this.label,
     required this.icon,
     required this.selectedIcon,
     required this.child,
   });
 
-  final String route;
   final String label;
   final IconData icon;
   final IconData selectedIcon;

@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:menno_tracker/src/app.dart';
 import 'package:menno_tracker/src/db/database.dart';
 import 'package:menno_tracker/src/providers/providers.dart';
 import 'package:menno_tracker/src/screens/workout_screen.dart';
@@ -19,7 +20,8 @@ void main() {
     await database.close();
   });
 
-  testWidgets('finishing a tiny workout persists and navigates to history', (tester) async {
+  testWidgets('finishing a tiny workout persists and navigates to history',
+      (tester) async {
     final observer = _RecordingNavigatorObserver();
     final session = shared.WorkoutSession(
       id: 'tiny-session',
@@ -59,6 +61,38 @@ void main() {
     expect(saved!.entries.single.sets.single.actualReps, 1);
     expect(find.text('History reached'), findsOneWidget);
     expect(observer.pushedNames, contains('/history'));
+  });
+
+  testWidgets('started workout remains available from the Workout tab',
+      (tester) async {
+    final container = ProviderContainer(
+      overrides: [databaseProvider.overrideWithValue(database)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MennoTrackerApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('start-workout')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(container.read(activeWorkoutProvider), isNotNull);
+
+    expect(find.textContaining('Exercise 1 of'), findsOneWidget);
+    expect(find.text('No workout in progress'), findsNothing);
+
+    await tester.tap(find.text('Today'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Workout'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Exercise 1 of'), findsOneWidget);
+    expect(find.text('No workout in progress'), findsNothing);
   });
 }
 

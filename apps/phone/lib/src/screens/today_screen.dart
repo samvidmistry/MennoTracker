@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +8,6 @@ import 'package:shared_models/shared_models.dart' as shared;
 
 import '../providers/providers.dart';
 import '../widgets/exercise_card.dart';
-import 'workout_screen.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -71,7 +72,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                         const SizedBox(height: 8),
                         Text(
                           workout.name,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
@@ -107,7 +111,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   height: 60,
                   child: FilledButton.icon(
                     key: const Key('start-workout'),
-                    onPressed: () => _startWorkout(program, workout, suggestions),
+                    onPressed: () =>
+                        _startWorkout(program, workout, suggestions),
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Start Workout'),
                   ),
@@ -192,23 +197,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       ],
     );
 
-    await ref.read(watchBridgeProvider).sendWorkoutPayload(payload);
+    ref.read(activeWorkoutProvider.notifier).start(
+          session: session,
+          workout: workout,
+          suggestedWeightsKg: suggestions,
+        );
+    unawaited(ref.read(watchBridgeProvider).sendWorkoutPayload(payload));
     if (!mounted) {
       return;
     }
 
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => WorkoutScreen(
-          session: session,
-          workout: workout,
-          suggestedWeightsKg: suggestions,
-        ),
-      ),
-    );
-    if (mounted) {
-      _refresh();
-    }
+    Navigator.of(context).pushReplacementNamed('/workout');
   }
 }
 

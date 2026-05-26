@@ -40,12 +40,40 @@ class WorkoutStartPrompt extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: () => Navigator.of(context).pushReplacementNamed('/today'),
+              onPressed: () =>
+                  Navigator.of(context).pushReplacementNamed('/today'),
               child: const Text('Go to Today'),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class WorkoutTab extends ConsumerWidget {
+  const WorkoutTab({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeWorkout = ref.watch(activeWorkoutProvider);
+    if (activeWorkout == null) {
+      return const WorkoutStartPrompt();
+    }
+
+    return WorkoutScreen(
+      key: ValueKey(activeWorkout.session.id),
+      session: activeWorkout.session,
+      workout: activeWorkout.workout,
+      suggestedWeightsKg: activeWorkout.suggestedWeightsKg,
+      initialEntries: activeWorkout.entries,
+      embedded: true,
+      onEntriesChanged: (entries) {
+        ref.read(activeWorkoutProvider.notifier).updateEntries(entries);
+      },
+      onFinished: () {
+        ref.read(activeWorkoutProvider.notifier).clear();
+      },
     );
   }
 }
@@ -56,11 +84,19 @@ class WorkoutScreen extends ConsumerStatefulWidget {
     required this.session,
     required this.workout,
     required this.suggestedWeightsKg,
+    this.initialEntries = const <shared.ExerciseEntry>[],
+    this.embedded = false,
+    this.onEntriesChanged,
+    this.onFinished,
   });
 
   final shared.WorkoutSession session;
   final Workout workout;
   final Map<String, double> suggestedWeightsKg;
+  final List<shared.ExerciseEntry> initialEntries;
+  final bool embedded;
+  final ValueChanged<List<shared.ExerciseEntry>>? onEntriesChanged;
+  final VoidCallback? onFinished;
 
   @override
   ConsumerState<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -72,22 +108,22 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   var _currentReps = 0;
   var _isResting = false;
   var _readyToFinish = false;
-  late final List<shared.ExerciseEntry> _entries;
+  late List<shared.ExerciseEntry> _entries;
 
   @override
   void initState() {
     super.initState();
-    _entries = [
-      for (final block in widget.workout.blocks)
-        shared.ExerciseEntry(
-          blockId: block.id,
-          exerciseId: block.exerciseId,
-          workingWeightKg: widget.suggestedWeightsKg[block.id] ?? 20,
-          suggestionAppliedKg: widget.suggestedWeightsKg[block.id],
-        ),
-    ];
-    if (widget.workout.blocks.isNotEmpty) {
-      _currentReps = widget.workout.blocks.first.repMax;
+    _entries = _initialEntries();
+    _restoreProgressFromEntries();
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkoutScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session.id != widget.session.id ||
+        oldWidget.workout.id != widget.workout.id) {
+      _entries = _initialEntries();
+      _restoreProgressFromEntries();
     }
   }
 
@@ -106,6 +142,139 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         widget.workout.blocks.length;
     final allSetsDone = _allSetsDone;
 
+    final platesButton = FloatingActionButton.extended(
+      key: const Key('plates-fab'),
+      onPressed: _openPlateCalculator,
+      icon: const Icon(Icons.album),
+      label: const Text('Plates'),
+    );
+    final body = SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
+        children: [
+          Text(
+            'Exercise ${_currentBlockIndex + 1} of ${widget.workout.blocks.length} • ${widget.workout.name}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
+          const SizedBox(height: 16),
+          ExerciseCard(
+            block: block,
+            exercise: exercise,
+            suggestedWeightKg: entry.workingWeightKg,
+            setsTarget: block.maxSets,
+            repMin: block.repMin,
+            repMax: block.repMax,
+          ),
+          const SizedBox(height: 8),
+          _WorkoutCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        exercise.name,
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                      ),
+                    ),
+                    InkWell(
+                      key: const Key('working-weight'),
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _editWeight(entry),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          '${_formatWeight(entry.workingWeightKg)} kg',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${block.repMin}–${block.repMax} reps • rest ${_minutes(block.restMinSeconds)}–${_minutes(block.restMaxSeconds)} min',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (var index = 0; index < block.maxSets; index += 1)
+                      SetCircle(
+                        state: _setCircleState(entry, index),
+                        reps: index < entry.sets.length
+                            ? entry.sets[index].actualReps
+                            : null,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (!allSetsDone) ...[
+                  Center(
+                    child: NumericRepInput(
+                      key: ValueKey('${block.id}-$_currentSetIndex'),
+                      initialValue: _currentReps,
+                      onChanged: (value) => _currentReps = value,
+                      onDone: (_) => _recordSet(failed: false),
+                      onLongPressFail: (_) => _recordSet(failed: true),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _DoneSetButton(
+                    isResting: _isResting,
+                    onTap: () => _recordSet(failed: false),
+                    onLongPress: () => _recordSet(failed: true),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: FilledButton.icon(
+                      key: const Key('finish-workout'),
+                      onPressed: _finishWorkout,
+                      icon: const Icon(Icons.check_circle),
+                      label: const Text('Finish Workout'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.embedded) {
+      return Stack(
+        children: [
+          body,
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: platesButton,
+          ),
+        ],
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.workout.name),
@@ -118,122 +287,59 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('plates-fab'),
-        onPressed: _openPlateCalculator,
-        icon: const Icon(Icons.album),
-        label: const Text('Plates'),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
-          children: [
-            Text(
-              'Exercise ${_currentBlockIndex + 1} of ${widget.workout.blocks.length} • ${widget.workout.name}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
-            const SizedBox(height: 16),
-            ExerciseCard(
-              block: block,
-              exercise: exercise,
-              suggestedWeightKg: entry.workingWeightKg,
-              setsTarget: block.maxSets,
-              repMin: block.repMin,
-              repMax: block.repMax,
-            ),
-            const SizedBox(height: 8),
-            _WorkoutCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          exercise.name,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                      ),
-                      InkWell(
-                        key: const Key('working-weight'),
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => _editWeight(entry),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          child: Text(
-                            '${_formatWeight(entry.workingWeightKg)} kg',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${block.repMin}–${block.repMax} reps • rest ${_minutes(block.restMinSeconds)}–${_minutes(block.restMaxSeconds)} min',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (var index = 0; index < block.maxSets; index += 1)
-                        SetCircle(
-                          state: _setCircleState(entry, index),
-                          reps: index < entry.sets.length
-                              ? entry.sets[index].actualReps
-                              : null,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  if (!allSetsDone) ...[
-                    Center(
-                      child: NumericRepInput(
-                        key: ValueKey('${block.id}-$_currentSetIndex'),
-                        initialValue: _currentReps,
-                        onChanged: (value) => _currentReps = value,
-                        onDone: (_) => _recordSet(failed: false),
-                        onLongPressFail: (_) => _recordSet(failed: true),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _DoneSetButton(
-                      isResting: _isResting,
-                      onTap: () => _recordSet(failed: false),
-                      onLongPress: () => _recordSet(failed: true),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 60,
-                      child: FilledButton.icon(
-                        key: const Key('finish-workout'),
-                        onPressed: _finishWorkout,
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text('Finish Workout'),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      floatingActionButton: platesButton,
+      body: body,
     );
+  }
+
+  List<shared.ExerciseEntry> _initialEntries() {
+    final entriesByBlock = {
+      for (final entry in widget.initialEntries) entry.blockId: entry,
+    };
+
+    return [
+      for (final block in widget.workout.blocks)
+        entriesByBlock[block.id] ??
+            shared.ExerciseEntry(
+              blockId: block.id,
+              exerciseId: block.exerciseId,
+              workingWeightKg: widget.suggestedWeightsKg[block.id] ?? 20,
+              suggestionAppliedKg: widget.suggestedWeightsKg[block.id],
+            ),
+    ];
+  }
+
+  void _restoreProgressFromEntries() {
+    _isResting = false;
+    _readyToFinish = false;
+    _currentBlockIndex = 0;
+    _currentSetIndex = 0;
+    _currentReps = 0;
+
+    if (widget.workout.blocks.isEmpty || _entries.isEmpty) {
+      return;
+    }
+
+    for (var index = 0; index < widget.workout.blocks.length; index += 1) {
+      final block = widget.workout.blocks[index];
+      final entry = _entries[index];
+      if (entry.sets.length < block.maxSets) {
+        _currentBlockIndex = index;
+        _currentSetIndex = entry.sets.length;
+        _currentReps = _defaultRepsFor(block, entry);
+        return;
+      }
+    }
+
+    _currentBlockIndex = widget.workout.blocks.length - 1;
+    _currentSetIndex = _entries[_currentBlockIndex].sets.length;
+    _readyToFinish = true;
+    _currentReps = _defaultRepsForCurrentSet();
+  }
+
+  void _notifyEntriesChanged() {
+    widget.onEntriesChanged
+        ?.call(List<shared.ExerciseEntry>.unmodifiable(_entries));
   }
 
   SetState _setCircleState(shared.ExerciseEntry entry, int index) {
@@ -280,7 +386,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final parsed = double.tryParse(controller.text.replaceAll(',', '.'));
+              final parsed =
+                  double.tryParse(controller.text.replaceAll(',', '.'));
               Navigator.of(context).pop(parsed);
             },
             child: const Text('Save'),
@@ -296,6 +403,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     setState(() {
       _entries[_currentBlockIndex] = entry.copyWith(workingWeightKg: value);
     });
+    _notifyEntriesChanged();
   }
 
   Future<void> _recordSet({required bool failed}) async {
@@ -320,6 +428,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       _currentSetIndex = updatedEntry.sets.length;
       _readyToFinish = _allSetsDone;
     });
+    _notifyEntriesChanged();
 
     unawaited(_signalSetCompleted(setLog, block.id));
     if (ref
@@ -327,7 +436,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         .shouldDeloadRemainingSets(updatedEntry, block)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Last set under range — consider dropping remaining sets ~10%.'),
+          content: Text(
+              'Last set under range — consider dropping remaining sets ~10%.'),
         ),
       );
     }
@@ -404,6 +514,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   int _defaultRepsForCurrentSet() {
     final block = widget.workout.blocks[_currentBlockIndex];
     final entry = _entries[_currentBlockIndex];
+    return _defaultRepsFor(block, entry);
+  }
+
+  int _defaultRepsFor(ExerciseBlock block, shared.ExerciseEntry entry) {
     if (entry.sets.isEmpty) {
       return block.repMax;
     }
@@ -413,7 +527,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   Future<void> _openPlateCalculator() async {
     final settings = ref.read(settingsRepoProvider);
     final barWeight = await settings.getDouble('bar_weight_kg') ?? 20;
-    final inventory = _decodeInventory(await settings.getString('plate_inventory'));
+    final inventory =
+        _decodeInventory(await settings.getString('plate_inventory'));
     if (!mounted) {
       return;
     }
@@ -464,7 +579,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     if (!mounted) {
       return;
     }
-    Navigator.of(context).pushNamedAndRemoveUntil('/history', (route) => false);
+    final navigator = Navigator.of(context);
+    widget.onFinished?.call();
+    navigator.pushNamedAndRemoveUntil('/history', (route) => false);
   }
 
   Future<void> _updateProgressionStates(DateTime atUtc) async {
@@ -584,7 +701,8 @@ class _DoneSetButton extends StatelessWidget {
             child: Text(
               isResting ? 'Resting…' : 'Done Set',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: isResting ? colors.onSurfaceVariant : colors.onPrimary,
+                    color:
+                        isResting ? colors.onSurfaceVariant : colors.onPrimary,
                     fontWeight: FontWeight.w900,
                   ),
             ),

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/providers.dart';
+import '../services/notification_service.dart';
 
 class RestTimerWidget extends ConsumerStatefulWidget {
   const RestTimerWidget({
@@ -27,6 +28,7 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
   late Duration _remaining;
   bool _warnedAtTenSeconds = false;
   bool _completed = false;
+  NotificationService? _notifications;
 
   @override
   void initState() {
@@ -35,7 +37,15 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     if (_remaining == Duration.zero) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _complete());
+    } else {
+      _scheduleNotification();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _notifications = ref.read(notificationServiceProvider);
   }
 
   @override
@@ -47,12 +57,14 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
       _warnedAtTenSeconds = false;
       _completed = false;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      _scheduleNotification();
     }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_cancelNotification());
     super.dispose();
   }
 
@@ -91,12 +103,31 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
     await ref.read(watchBridgeProvider).triggerHaptic();
   }
 
+  void _scheduleNotification() {
+    if (_remaining <= Duration.zero) {
+      return;
+    }
+    final fireAt = DateTime.now().toUtc().add(_remaining);
+    final NotificationService notifications =
+        _notifications ?? ref.read(notificationServiceProvider);
+    unawaited(notifications.scheduleRestComplete(fireAt));
+  }
+
+  Future<void> _cancelNotification() async {
+    final notifications = _notifications;
+    if (notifications == null) {
+      return;
+    }
+    await notifications.cancelRestComplete();
+  }
+
   void _complete() {
     if (_completed) {
       return;
     }
     _completed = true;
     _timer?.cancel();
+    unawaited(_cancelNotification());
     unawaited(_playCompleteSignal());
     widget.onComplete();
   }
@@ -107,6 +138,7 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
     }
     _completed = true;
     _timer?.cancel();
+    unawaited(_cancelNotification());
     widget.onSkip();
   }
 
@@ -118,6 +150,8 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
     });
     if (_remaining == Duration.zero) {
       _complete();
+    } else {
+      _scheduleNotification();
     }
   }
 
