@@ -1,0 +1,46 @@
+# Dart
+.dart_tool/
+.packages
+packages/*/pubspec.lock
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+ios/Flutter/Generated.xcconfig
+**/ios/Flutter/Generated.xcconfig
+ios/Pods/
+**/ios/Pods/
+ios/.symlinks/
+**/ios/.symlinks/
+android/.gradle/
+**/android/.gradle/
+build/
+**/build/
+
+# Xcode
+xcuserdata/
+**/xcuserdata/
+*.xcuserstate
+DerivedData/
+**/DerivedData/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+
+# CI / Fastlane signing artifacts and generated reports
+ci/fastlane/report.xml
+**/fastlane/report.xml
+*.cer
+*.p12
+*.mobileprovision
+**/fastlane/README.md
+
+# Generated drift files are intentionally not ignored; commit them for CI.

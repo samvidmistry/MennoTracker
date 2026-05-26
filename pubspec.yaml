@@ -1,0 +1,10 @@
+name: mennotracker_workspace
+environment:
+  sdk: ^3.5.0
+workspace:
+  - packages/program
+  - packages/shared_models
+  - packages/progression
+  - apps/phone
+dev_dependencies:
+  lints: ^4.0.0

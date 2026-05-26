@@ -1,0 +1,7 @@
+git_url("https://github.com/YOUR_USER/mennotracker-certs.git")  # TODO: create a private repo and put its URL here
+storage_mode("git")
+type("appstore")                              # default; lanes override per task
+app_identifier(["com.mennotracker.app",
+                "com.mennotracker.app.watchkitapp"])
+username("your-apple-id@example.com")        # TODO: same as Appfile.apple_id
+readonly(true)

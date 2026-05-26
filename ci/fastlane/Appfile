@@ -1,0 +1,4 @@
+app_identifier "com.mennotracker.app"        # Bundle ID — must match Xcode project Runner target
+apple_id        "your-apple-id@example.com"  # TODO: set after $99 enrollment
+team_id         "XXXXXXXXXX"                 # TODO: from developer.apple.com/account
+itc_team_id     "XXXXXXXXX"                  # TODO: from App Store Connect

@@ -1,0 +1,48 @@
+default_platform(:ios)
+
+WORKSPACE = "../../apps/phone/ios/Runner.xcworkspace"
+SCHEME    = "Runner"
+
+platform :ios do
+  # First-run only: generates certs + provisioning profiles and pushes them to the
+  # encrypted match git repo. Run on a borrowed Mac after $99 enrollment.
+  # See docs/migrate-to-paid-program.md.
+  lane :bootstrap do
+    match(type: "development", generate_apple_certs: true, readonly: false,
+          app_identifier: ["com.mennotracker.app", "com.mennotracker.app.watchkitapp"])
+    match(type: "adhoc",       generate_apple_certs: true, readonly: false,
+          app_identifier: ["com.mennotracker.app", "com.mennotracker.app.watchkitapp"])
+    match(type: "appstore",    generate_apple_certs: true, readonly: false,
+          app_identifier: ["com.mennotracker.app", "com.mennotracker.app.watchkitapp"])
+  end
+
+  # TestFlight build & upload. Invoked from .github/workflows/ios-beta.yml.
+  lane :beta do
+    setup_ci if ENV["CI"]
+    match(type: "appstore", readonly: true)
+    build_app(
+      workspace: WORKSPACE,
+      scheme: SCHEME,
+      export_method: "app-store",
+      export_options: { signingStyle: "manual" }
+    )
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  # Ad-hoc OTA via Firebase App Distribution. Invoked from .github/workflows/ios-adhoc.yml.
+  lane :adhoc do
+    setup_ci if ENV["CI"]
+    match(type: "adhoc", readonly: true)
+    build_app(
+      workspace: WORKSPACE,
+      scheme: SCHEME,
+      export_method: "ad-hoc",
+      export_options: { signingStyle: "manual" }
+    )
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID"],            # TODO: set in GH secrets
+      groups: "internal-testers",             # TODO: configure groups in Firebase console
+      firebase_cli_token: ENV["FIREBASE_TOKEN"]
+    )
+  end
+end

@@ -1,0 +1,36 @@
+# Primary v1 build. Produces unsigned IPA for AltStore. ~8-10 min on macos-14. See docs/altstore-setup.md.
+name: iOS Unsigned IPA (for AltStore)
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with: { xcode-version: '15.4' }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, flutter-version: '3.24.x', cache: true }
+      - uses: actions/cache@v4
+        with:
+          path: apps/phone/ios/Pods
+          key: pods-${{ hashFiles('apps/phone/ios/Podfile.lock') }}
+      - run: flutter pub get
+        working-directory: apps/phone
+      - run: cd apps/phone/ios && pod install --repo-update
+      - run: flutter build ios --release --no-codesign
+        working-directory: apps/phone
+      - name: Package unsigned IPA
+        run: |
+          cd apps/phone/build/ios/iphoneos
+          mkdir Payload
+          mv Runner.app Payload/
+          zip -r MennoTracker.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MennoTracker-unsigned-ipa
+          path: apps/phone/build/ios/iphoneos/MennoTracker.ipa
+          retention-days: 30
