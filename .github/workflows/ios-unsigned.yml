@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.ALTSTORE_RELEASE_TOKEN }}
       - name: Select Xcode 15.4
         run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
       - name: Install Flutter
@@ -50,7 +52,7 @@ jobs:
           retention-days: 30
       - name: Publish GitHub release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.ALTSTORE_RELEASE_TOKEN }}
         run: |
           tag="${{ inputs.tag_name }}"
           release_name="${{ inputs.release_name }}"
