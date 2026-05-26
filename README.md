@@ -50,4 +50,4 @@ The data model keeps room for the official program variant, but v1 only exposes 
 
 ## Status
 
-CI workflows and release artifacts are being scaffolded. The status badge above will be updated once the workflow URL is available.
+CI runs Dart and Flutter checks on pushes and pull requests. iOS packaging is manual-only through the `iOS Package and Release` workflow, which builds an unsigned IPA for AltStore and attaches it to a GitHub release.

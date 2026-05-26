@@ -231,20 +231,15 @@ Screenshot placeholder:
 Use this routine after the one-time setup is complete.
 This is the normal MennoTracker install loop for Windows.
 
-### 1. Tag a release in git
+### 1. Run the manual iOS release workflow
 
-From the repo on Windows, create and push a release tag.
-Example:
-
-```powershell
-git tag v0.1.0
-git push --tags
-```
+Open GitHub Actions and start the `iOS Package and Release` workflow manually.
+Enter the release tag, for example `v0.1.0`.
 
 Expected outcome:
 
-- The tag appears in GitHub.
-- The unsigned iOS workflow starts if tags are configured for it.
+- The workflow starts only after manual approval.
+- The workflow creates or updates a GitHub release for the requested tag.
 
 ### 2. Wait for GitHub Actions
 
@@ -255,12 +250,14 @@ Expected outcome:
 
 - The workflow completes successfully.
 - The run summary contains an IPA artifact.
+- The GitHub release has the same IPA attached.
 
 ### 3. Download the IPA on Windows
 
-Open the Actions run summary in GitHub.
-Download the `MennoTracker-unsigned-ipa` artifact.
-Extract the downloaded artifact if GitHub provides it as a zip.
+Open the GitHub release created by the workflow.
+Download `MennoTracker.ipa`.
+If needed, you can also download the `MennoTracker-unsigned-ipa` artifact from the Actions run summary.
+Extract the artifact if GitHub provides it as a zip.
 Find the `.ipa` file.
 
 Expected outcome:

@@ -1,9 +1,24 @@
-# Primary v1 build. Produces unsigned IPA for AltStore. ~8-10 min on macos-14. See docs/altstore-setup.md.
-name: iOS Unsigned IPA (for AltStore)
+# Primary v1 release build. Produces an unsigned IPA for AltStore and can attach it to a GitHub release.
+# Manual only to avoid spending macOS minutes on every commit. See docs/altstore-setup.md.
+name: iOS Package and Release
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
+    inputs:
+      tag_name:
+        description: "Release tag to create or update, for example v0.1.0"
+        required: true
+        type: string
+      release_name:
+        description: "Release title"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: macos-14
@@ -26,7 +41,7 @@ jobs:
       - name: Package unsigned IPA
         run: |
           cd apps/phone/build/ios/iphoneos
-          mkdir Payload
+          mkdir -p Payload
           mv Runner.app Payload/
           zip -r MennoTracker.ipa Payload
       - uses: actions/upload-artifact@v7
@@ -34,3 +49,11 @@ jobs:
           name: MennoTracker-unsigned-ipa
           path: apps/phone/build/ios/iphoneos/MennoTracker.ipa
           retention-days: 30
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ inputs.release_name || inputs.tag_name }}
+          prerelease: ${{ inputs.prerelease }}
+          files: apps/phone/build/ios/iphoneos/MennoTracker.ipa
