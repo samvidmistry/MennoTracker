@@ -44,3 +44,7 @@ ci/fastlane/report.xml
 **/fastlane/README.md
 
 # Generated drift files are intentionally not ignored; commit them for CI.
+
+# Python
+__pycache__/
+*.pyc

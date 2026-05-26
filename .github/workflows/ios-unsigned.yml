@@ -57,3 +57,17 @@ jobs:
           name: ${{ inputs.release_name || inputs.tag_name }}
           prerelease: ${{ inputs.prerelease }}
           files: apps/phone/build/ios/iphoneos/MennoTracker.ipa
+      - name: Update AltStore source manifest
+        run: |
+          python3 ci/update_altstore_source.py \
+            --ipa apps/phone/build/ios/iphoneos/MennoTracker.ipa \
+            --tag "${{ inputs.tag_name }}" \
+            --apps-json apps.json \
+            --repo "${{ github.repository }}"
+      - name: Commit apps.json
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          file_pattern: apps.json
+          commit_message: "chore(altstore): publish ${{ inputs.tag_name }} to apps.json"
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com

@@ -14,7 +14,7 @@ for the borrowed-Mac watch workflow.
 - Installing AltStore Server.
 - Pairing an iPhone with the PC.
 - Installing AltStore on the iPhone.
-- Installing a MennoTracker unsigned IPA produced by GitHub Actions.
+- Adding the MennoTracker AltStore source so the latest release installs and updates automatically.
 - Keeping the app refreshed before the 7-day free-signing limit expires.
 
 ## Prerequisites
@@ -46,10 +46,11 @@ for the borrowed-Mac watch workflow.
 
 AltStore Server runs on Windows.
 The iPhone runs the AltStore app.
-GitHub Actions builds an unsigned IPA.
-You download that IPA on Windows.
-AltStore Server re-signs the IPA with your Apple ID.
-AltStore Server sends the app to the iPhone over USB or local Wi-Fi.
+GitHub Actions builds an unsigned IPA and publishes it as a GitHub release.
+The `iOS Package and Release` workflow also updates `apps.json` at the repo root,
+which is the AltStore source manifest.
+AltStore on the iPhone polls that manifest, downloads new IPAs over Wi-Fi,
+and asks AltStore Server to re-sign and install them with your Apple ID.
 
 ## One-time setup
 
@@ -228,55 +229,61 @@ Screenshot placeholder:
 
 ## Per-build flow
 
-Use this routine after the one-time setup is complete.
-This is the normal MennoTracker install loop for Windows.
+After the one-time setup is complete, the normal install path is via the
+MennoTracker AltStore source. Adding the source is a one-time step; future
+releases appear in AltStore automatically.
 
-### 1. Run the manual iOS release workflow
+### 1. Add the MennoTracker AltStore source (one-time)
+
+On the iPhone, open AltStore.
+Switch to the `Browse` tab.
+Tap the `+` icon in the top-right.
+Paste the source URL:
+
+```
+https://raw.githubusercontent.com/samvidmistry/MennoTracker/master/apps.json
+```
+
+Tap `Add Source` and confirm.
+
+Expected outcome:
+
+- A `MennoTracker` source appears under `Browse`.
+- A `Menno Tracker` app entry is listed under that source.
+
+### 2. Install Menno Tracker from the source
+
+In the source listing, tap `Menno Tracker`.
+Tap `Get` (or `Update` if a sideloaded copy already exists with the same bundle ID).
+Enter your Apple ID password (or app-specific password) if prompted.
+
+Expected outcome:
+
+- AltStore Server re-signs the IPA with your Apple ID.
+- Menno Tracker appears on the iPhone Home Screen.
+- The app launches without an untrusted-developer warning (since AltStore was already trusted).
+
+### 3. Publish a new release
 
 Open GitHub Actions and start the `iOS Package and Release` workflow manually.
-Enter the release tag, for example `v0.1.0`.
+Enter the release tag, for example `v0.1.1`.
+Bump `CFBundleShortVersionString` in `apps/phone/ios/Runner/Info.plist`
+before tagging so AltStore sees the new version as an update.
 
 Expected outcome:
 
-- The workflow starts only after manual approval.
-- The workflow creates or updates a GitHub release for the requested tag.
+- The workflow builds an unsigned IPA, publishes a GitHub release with the IPA attached,
+  and commits an updated `apps.json` to `master`.
+- Within a few minutes, AltStore on the iPhone shows an `Update` badge for Menno Tracker.
+- Tapping `Update` re-signs the new IPA and installs in place; app data is preserved.
 
-### 2. Wait for GitHub Actions
+### 4. Manual install (fallback)
 
-GitHub Actions builds the unsigned IPA on a macOS runner.
-Expect about 8–10 minutes for a normal build.
+Use this only if the source-based flow is unavailable (network issues, source schema bug, etc.).
 
-Expected outcome:
-
-- The workflow completes successfully.
-- The run summary contains an IPA artifact.
-- The GitHub release has the same IPA attached.
-
-### 3. Download the IPA on Windows
-
-Open the GitHub release created by the workflow.
-Download `MennoTracker.ipa`.
-If needed, you can also download the `MennoTracker-unsigned-ipa` artifact from the Actions run summary.
-Extract the artifact if GitHub provides it as a zip.
-Find the `.ipa` file.
-
-Expected outcome:
-
-- You have a MennoTracker `.ipa` file on the Windows PC.
-
-### 4. Install through AltStore Server
-
-Make sure AltStore Server is running.
-Make sure the iPhone is nearby, unlocked if needed, and on the same Wi-Fi.
-Drag the `.ipa` into AltStore Server.
-Select the iPhone.
-Click install.
-Wait for AltStore to re-sign and send the app.
-
-Expected outcome:
-
-- MennoTracker appears on the iPhone Home Screen.
-- The app launches on the iPhone.
+1. Download `MennoTracker.ipa` from the GitHub release on the Windows PC.
+2. Make sure AltStore Server is running and the iPhone is on the same Wi-Fi.
+3. Drag the `.ipa` into AltStore Server, select the iPhone, click install.
 
 ## Refresh behavior
 
@@ -362,4 +369,5 @@ To get the watch app on your wrist, use [`installing-watch-app.md`](installing-w
 - Mail pairing is configured or intentionally skipped.
 - Wi-Fi sync is enabled in iTunes.
 - Manual refresh succeeds.
-- A MennoTracker IPA can be installed from Windows.
+- The MennoTracker AltStore source is added in AltStore.
+- Menno Tracker installs from the source and shows updates on new releases.

@@ -1,0 +1,30 @@
+{
+  "name": "MennoTracker",
+  "identifier": "com.mennotracker.altstore-source",
+  "sourceURL": "https://raw.githubusercontent.com/samvidmistry/MennoTracker/master/apps.json",
+  "apps": [
+    {
+      "name": "Menno Tracker",
+      "bundleIdentifier": "com.mennotracker.mennoTracker",
+      "developerName": "Samvid Mistry",
+      "subtitle": "Training and tracking companion",
+      "localizedDescription": "MennoTracker is the phone-side companion app for the reduced training program. Installed via AltStore using a free Apple ID; refreshes every 7 days while AltServer runs on the paired PC.",
+      "iconURL": "https://raw.githubusercontent.com/samvidmistry/MennoTracker/master/altstore/icon.png",
+      "tintColor": "5856D6",
+      "category": "utilities",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "0.1.0",
+          "buildVersion": "1",
+          "date": "2026-05-26T10:26:11Z",
+          "size": 8263191,
+          "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.0.1/MennoTracker.ipa",
+          "minOSVersion": "13.0",
+          "localizedDescription": "Initial AltStore-distributed release."
+        }
+      ]
+    }
+  ],
+  "news": []
+}
