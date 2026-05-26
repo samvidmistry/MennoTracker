@@ -95,7 +95,32 @@ def upsert_version(apps_json_path: Path, entry: dict) -> dict:
     ]
     versions.insert(0, entry)
     app["versions"] = versions
+
+    mirror_latest_to_legacy_fields(app, versions[0])
     return data
+
+
+# Legacy AltStore/SideStore clients decode these fields directly off the app
+# object instead of versions[]. Keep them in sync with the newest entry so
+# both schemas resolve to the same IPA after every publish.
+LEGACY_FIELD_MAP: tuple[tuple[str, str], ...] = (
+    ("version", "version"),
+    ("buildVersion", "buildVersion"),
+    ("versionDate", "date"),
+    ("versionDescription", "localizedDescription"),
+    ("size", "size"),
+    ("downloadURL", "downloadURL"),
+    ("minOSVersion", "minOSVersion"),
+)
+
+
+def mirror_latest_to_legacy_fields(app: dict, latest: dict) -> None:
+    for legacy_key, entry_key in LEGACY_FIELD_MAP:
+        if entry_key in latest:
+            app[legacy_key] = latest[entry_key]
+        elif legacy_key == "versionDescription":
+            # Keep a sensible default so older clients always have a string here.
+            app.setdefault(legacy_key, "Latest release.")
 
 
 def write_apps_json(apps_json_path: Path, data: dict) -> None:
