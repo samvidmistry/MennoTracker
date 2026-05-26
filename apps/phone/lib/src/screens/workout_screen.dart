@@ -365,37 +365,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   }
 
   Future<void> _editWeight(shared.ExerciseEntry entry) async {
-    final controller = TextEditingController(
-      text: _formatWeight(entry.workingWeightKg),
-    );
     final value = await showDialog<double>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Working weight'),
-        content: TextField(
-          key: const Key('weight-field'),
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          decoration: const InputDecoration(suffixText: 'kg'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed =
-                  double.tryParse(controller.text.replaceAll(',', '.'));
-              Navigator.of(context).pop(parsed);
-            },
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (context) => _WeightDialog(
+        initialWeightKg: entry.workingWeightKg,
       ),
     );
-    controller.dispose();
 
     if (value == null || !mounted) {
       return;
@@ -653,6 +628,68 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       return minutes.toStringAsFixed(0);
     }
     return minutes.toStringAsFixed(1);
+  }
+}
+
+class _WeightDialog extends StatefulWidget {
+  const _WeightDialog({required this.initialWeightKg});
+
+  final double initialWeightKg;
+
+  @override
+  State<_WeightDialog> createState() => _WeightDialogState();
+}
+
+class _WeightDialogState extends State<_WeightDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: _formatWeight(widget.initialWeightKg),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Working weight'),
+      content: TextField(
+        key: const Key('weight-field'),
+        controller: _controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        autofocus: true,
+        decoration: const InputDecoration(suffixText: 'kg'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final parsed =
+                double.tryParse(_controller.text.replaceAll(',', '.'));
+            Navigator.of(context).pop(parsed);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  static String _formatWeight(double weight) {
+    if (weight == weight.roundToDouble()) {
+      return weight.toStringAsFixed(0);
+    }
+    return weight.toStringAsFixed(1);
   }
 }
 

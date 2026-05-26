@@ -63,6 +63,54 @@ void main() {
     expect(observer.pushedNames, contains('/history'));
   });
 
+  testWidgets('editing working weight updates the workout without exceptions',
+      (tester) async {
+    final session = shared.WorkoutSession(
+      id: 'edit-weight-session',
+      programId: _program.id,
+      workoutId: _workout.id,
+      dateUtc: DateTime.utc(2025, 1, 1),
+      startedAt: DateTime.utc(2025, 1, 1, 8),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          programProvider.overrideWithValue(_program),
+        ],
+        child: MaterialApp(
+          routes: {
+            '/history': (_) => const Scaffold(body: Text('History reached')),
+          },
+          home: WorkoutScreen(
+            session: session,
+            workout: _workout,
+            suggestedWeightsKg: const {'tiny-block': 20},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('working-weight')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('weight-field')), '22.5');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('22.5 kg'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('done-set')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('finish-workout')));
+    await tester.pumpAndSettle();
+
+    final saved = await database.workoutSessionDao.byId('edit-weight-session');
+    expect(saved, isNotNull);
+    expect(saved!.entries.single.workingWeightKg, 22.5);
+  });
+
   testWidgets('started workout remains available from the Workout tab',
       (tester) async {
     final container = ProviderContainer(
