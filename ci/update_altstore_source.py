@@ -86,6 +86,7 @@ def upsert_version(apps_json_path: Path, entry: dict) -> dict:
     if not data.get("apps"):
         raise RuntimeError(f"{apps_json_path} has no apps[] to update")
     app = data["apps"][0]
+    ensure_current_altstore_schema(app)
     versions = app.setdefault("versions", [])
 
     versions = [
@@ -98,6 +99,24 @@ def upsert_version(apps_json_path: Path, entry: dict) -> dict:
 
     mirror_latest_to_legacy_fields(app, versions[0])
     return data
+
+
+DEFAULT_APP_PERMISSIONS: dict = {
+    "entitlements": [
+        "com.apple.developer.healthkit",
+        "com.apple.developer.healthkit.access",
+    ],
+    "privacy": {
+        "NSHealthShareUsageDescription": "Reads heart rate during workouts to show effort in real time.",
+        "NSHealthUpdateUsageDescription": "Writes completed strength training workouts to Apple Health.",
+    },
+}
+
+
+def ensure_current_altstore_schema(app: dict) -> None:
+    if "screenshots" not in app and "screenshotURLs" in app:
+        app["screenshots"] = app.pop("screenshotURLs")
+    app.setdefault("appPermissions", DEFAULT_APP_PERMISSIONS)
 
 
 # Legacy AltStore/SideStore clients decode these fields directly off the app

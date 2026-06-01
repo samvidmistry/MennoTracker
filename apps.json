@@ -12,7 +12,17 @@
       "iconURL": "https://raw.githubusercontent.com/samvidmistry/MennoTracker/master/altstore/icon.png",
       "tintColor": "5856D6",
       "category": "utilities",
-      "screenshotURLs": [],
+      "screenshots": [],
+      "appPermissions": {
+        "entitlements": [
+          "com.apple.developer.healthkit",
+          "com.apple.developer.healthkit.access"
+        ],
+        "privacy": {
+          "NSHealthShareUsageDescription": "Reads heart rate during workouts to show effort in real time.",
+          "NSHealthUpdateUsageDescription": "Writes completed strength training workouts to Apple Health."
+        }
+      },
       "version": "0.1.4",
       "buildVersion": "5",
       "versionDate": "2026-05-26T16:09:17Z",

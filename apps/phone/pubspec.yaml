@@ -1,7 +1,7 @@
 name: menno_tracker
 description: MennoTracker — StrongLifts-style tracker for the Galpin × Henselmans hypertrophy program.
 publish_to: 'none'
-version: 0.1.4+5
+version: 0.1.5+6
 
 environment:
   sdk: ^3.5.0
