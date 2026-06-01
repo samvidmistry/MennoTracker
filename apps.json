@@ -13,16 +13,7 @@
       "tintColor": "5856D6",
       "category": "utilities",
       "screenshots": [],
-      "appPermissions": {
-        "entitlements": [
-          "com.apple.developer.healthkit",
-          "com.apple.developer.healthkit.access"
-        ],
-        "privacy": {
-          "NSHealthShareUsageDescription": "Reads heart rate during workouts to show effort in real time.",
-          "NSHealthUpdateUsageDescription": "Writes completed strength training workouts to Apple Health."
-        }
-      },
+      "screenshotURLs": [],
       "version": "0.2.0",
       "buildVersion": "7",
       "versionDate": "2026-06-01T13:12:15Z",

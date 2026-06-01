@@ -81,13 +81,32 @@ def build_version_entry(
     return entry
 
 
-def upsert_version(apps_json_path: Path, entry: dict) -> dict:
+def upsert_version(
+    apps_json_path: Path,
+    entry: dict,
+    *,
+    preserve_existing_date: bool = False,
+    preserve_existing_notes: bool = False,
+) -> dict:
     data = json.loads(apps_json_path.read_text(encoding="utf-8"))
     if not data.get("apps"):
         raise RuntimeError(f"{apps_json_path} has no apps[] to update")
     app = data["apps"][0]
     ensure_current_altstore_schema(app)
     versions = app.setdefault("versions", [])
+    existing = next(
+        (
+            v for v in versions
+            if v.get("version") == entry["version"]
+            and str(v.get("buildVersion", "")) == entry["buildVersion"]
+        ),
+        None,
+    )
+    if existing:
+        if preserve_existing_date and "date" in existing:
+            entry["date"] = existing["date"]
+        if preserve_existing_notes and "localizedDescription" in existing:
+            entry["localizedDescription"] = existing["localizedDescription"]
 
     versions = [
         v for v in versions
@@ -101,22 +120,15 @@ def upsert_version(apps_json_path: Path, entry: dict) -> dict:
     return data
 
 
-DEFAULT_APP_PERMISSIONS: dict = {
-    "entitlements": [
-        "com.apple.developer.healthkit",
-        "com.apple.developer.healthkit.access",
-    ],
-    "privacy": {
-        "NSHealthShareUsageDescription": "Reads heart rate during workouts to show effort in real time.",
-        "NSHealthUpdateUsageDescription": "Writes completed strength training workouts to Apple Health.",
-    },
-}
-
-
 def ensure_current_altstore_schema(app: dict) -> None:
     if "screenshots" not in app and "screenshotURLs" in app:
-        app["screenshots"] = app.pop("screenshotURLs")
-    app.setdefault("appPermissions", DEFAULT_APP_PERMISSIONS)
+        app["screenshots"] = app["screenshotURLs"]
+    if "screenshotURLs" not in app:
+        screenshots = app.get("screenshots", [])
+        if isinstance(screenshots, list) and all(isinstance(item, str) for item in screenshots):
+            app["screenshotURLs"] = screenshots
+        else:
+            app["screenshotURLs"] = []
 
 
 # Legacy AltStore/SideStore clients decode these fields directly off the app
@@ -173,7 +185,12 @@ def main() -> int:
         release_notes=args.release_notes,
         date_iso=args.date,
     )
-    data = upsert_version(args.apps_json, entry)
+    data = upsert_version(
+        args.apps_json,
+        entry,
+        preserve_existing_date=args.date is None,
+        preserve_existing_notes=args.release_notes is None,
+    )
     write_apps_json(args.apps_json, data)
 
     print(f"updated {args.apps_json}: version={entry['version']} build={entry['buildVersion']} size={entry['size']}")
