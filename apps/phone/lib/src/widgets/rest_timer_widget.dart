@@ -23,9 +23,11 @@ class RestTimerWidget extends ConsumerStatefulWidget {
   ConsumerState<RestTimerWidget> createState() => _RestTimerWidgetState();
 }
 
-class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
+class _RestTimerWidgetState extends ConsumerState<RestTimerWidget>
+    with WidgetsBindingObserver {
   Timer? _timer;
   late Duration _remaining;
+  late DateTime _endAt;
   bool _warnedAtTenSeconds = false;
   bool _completed = false;
   NotificationService? _notifications;
@@ -34,6 +36,8 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
   void initState() {
     super.initState();
     _remaining = widget.initial;
+    _endAt = DateTime.now().add(_remaining);
+    WidgetsBinding.instance.addObserver(this);
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     if (_remaining == Duration.zero) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _complete());
@@ -54,6 +58,7 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
     if (oldWidget.initial != widget.initial) {
       _timer?.cancel();
       _remaining = widget.initial;
+      _endAt = DateTime.now().add(_remaining);
       _warnedAtTenSeconds = false;
       _completed = false;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
@@ -63,9 +68,33 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     unawaited(_cancelNotification());
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _resync();
+    }
+  }
+
+  void _resync() {
+    if (!mounted || _completed) {
+      return;
+    }
+    final remaining = _endAt.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      setState(() => _remaining = Duration.zero);
+      _complete();
+      return;
+    }
+    setState(() => _remaining = remaining);
+    if (!_warnedAtTenSeconds && _remaining.inSeconds <= 10) {
+      _warnedAtTenSeconds = true;
+    }
   }
 
   void _tick() {
@@ -146,6 +175,7 @@ class _RestTimerWidgetState extends ConsumerState<RestTimerWidget> {
     setState(() {
       final next = _remaining + delta;
       _remaining = next.isNegative ? Duration.zero : next;
+      _endAt = DateTime.now().add(_remaining);
       _warnedAtTenSeconds = _remaining.inSeconds <= 10;
     });
     if (_remaining == Duration.zero) {
