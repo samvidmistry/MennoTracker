@@ -3,18 +3,18 @@ import 'package:shared_models/shared_models.dart';
 void main() {
   final payload = WatchPayload(
     sessionId: 'session-1',
-    workoutId: 'workout-a',
-    workoutName: 'Workout A',
+    workoutId: 'day-1',
+    workoutName: 'Day 1 - Chest + Triceps',
     blocks: const <WatchExerciseBlock>[
       WatchExerciseBlock(
-        blockId: 'block-1',
+        blockId: 'day-1-bench-press',
         exerciseId: 'bench-press',
         exerciseName: 'Bench press',
         workingWeightKg: 80.0,
-        targetSets: 3,
-        repMin: 6,
-        repMax: 10,
-        restSeconds: 150,
+        targetSets: 2,
+        repMin: 4,
+        repMax: 6,
+        restSeconds: 120,
       ),
     ],
   );

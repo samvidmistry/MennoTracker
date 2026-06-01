@@ -26,7 +26,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Workout A'), findsOneWidget);
+    expect(find.text('Day 1 - Chest + Triceps'), findsOneWidget);
     expect(find.text('Start Workout'), findsOneWidget);
   });
 }

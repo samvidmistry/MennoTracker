@@ -23,36 +23,35 @@ class ProgressionEngine {
     required ExerciseEntry? lastEntry,
     required ExerciseBlock block,
     required Exercise exercise,
+    ExerciseEntry? previousEntry,
   }) {
     if (state == null && lastEntry == null) {
-      // Placeholder only: first-time users should override this with a real working weight.
       return SuggestedSet(
         weightKg: exercise.isBarbell ? 20.0 : exercise.smallestPlatePairKg,
         reason: SuggestionReason.firstTime,
       );
     }
 
-    final currentWeightKg =
-        state?.currentWorkingWeightKg ?? lastEntry!.workingWeightKg;
-
     if (lastEntry == null) {
       return SuggestedSet(
-        weightKg: currentWeightKg,
+        weightKg: state!.currentWorkingWeightKg,
         reason: SuggestionReason.hold,
       );
     }
 
-    final topSet = _firstHardSuccessfulSet(lastEntry);
-    if (topSet == null) {
+    if (_stateAlreadyReflectsEntry(state, lastEntry)) {
       return SuggestedSet(
-        weightKg: currentWeightKg,
+        weightKg: state!.currentWorkingWeightKg,
         reason: SuggestionReason.hold,
       );
     }
 
-    // Safety wins over progression: if any later hard set crashed, the load is over target.
-    if (config.repsBelowMinTriggersDeload &&
-        shouldDeloadRemainingSets(lastEntry, block)) {
+    final currentWeightKg = lastEntry.workingWeightKg;
+
+    if (config.consecutiveMissesTriggerDeload &&
+        previousEntry != null &&
+        missedMinimumReps(lastEntry) &&
+        missedMinimumReps(previousEntry)) {
       return SuggestedSet(
         weightKg: snapToPlateDown(
           currentWeightKg * (1 - config.deloadPercent),
@@ -62,11 +61,10 @@ class ProgressionEngine {
       );
     }
 
-    final bumpThreshold = config.bumpThresholdFor(block.repMin, block.repMax);
-    if (bumpThreshold != null && topSet.actualReps >= bumpThreshold) {
+    if (hitTopOfRangeOnAllSets(lastEntry, block)) {
       return SuggestedSet(
         weightKg: snapToPlateUp(
-          currentWeightKg * (1 + config.incrementPercent),
+          currentWeightKg + exercise.defaultIncrementKg,
           exercise.smallestPlatePairKg,
         ),
         reason: SuggestionReason.increase,
@@ -79,13 +77,24 @@ class ProgressionEngine {
     );
   }
 
-  bool shouldDeloadRemainingSets(
-      ExerciseEntry currentEntry, ExerciseBlock block) {
-    if (currentEntry.sets.length <= 1) return false;
-    for (var i = 1; i < currentEntry.sets.length; i++) {
-      final set = currentEntry.sets[i];
-      if (set.isWarmup) continue;
-      if (set.isFailed || set.actualReps < block.repMin) return true;
+  bool hitTopOfRangeOnAllSets(ExerciseEntry entry, ExerciseBlock block) {
+    final hardSets = _hardSets(entry);
+    if (hardSets.length < block.maxSets) {
+      return false;
+    }
+    for (final set in hardSets) {
+      if (set.isFailed || set.actualReps < set.targetRepMax) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool missedMinimumReps(ExerciseEntry entry) {
+    for (final set in _hardSets(entry)) {
+      if (set.isFailed || set.actualReps < set.targetRepMin) {
+        return true;
+      }
     }
     return false;
   }
@@ -105,11 +114,34 @@ class ProgressionEngine {
     return double.parse((multiplier * smallestPlatePairKg).toStringAsFixed(3));
   }
 
-  SetLog? _firstHardSuccessfulSet(ExerciseEntry entry) {
-    for (final set in entry.sets) {
-      if (set.isWarmup || set.isFailed) continue;
-      return set;
+  bool _stateAlreadyReflectsEntry(
+    ExerciseState? state,
+    ExerciseEntry lastEntry,
+  ) {
+    if (state == null) {
+      return false;
     }
-    return null;
+    final lastSetCompletedAt = _lastSetCompletedAt(lastEntry);
+    if (lastSetCompletedAt == null) {
+      return false;
+    }
+    return !state.lastUpdatedAt.toUtc().isBefore(lastSetCompletedAt.toUtc());
+  }
+
+  DateTime? _lastSetCompletedAt(ExerciseEntry entry) {
+    DateTime? latest;
+    for (final set in entry.sets) {
+      if (latest == null || set.completedAt.isAfter(latest)) {
+        latest = set.completedAt;
+      }
+    }
+    return latest;
+  }
+
+  List<SetLog> _hardSets(ExerciseEntry entry) {
+    return [
+      for (final set in entry.sets)
+        if (!set.isWarmup) set,
+    ];
   }
 }

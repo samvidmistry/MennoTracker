@@ -23,7 +23,7 @@ void main() {
 
     test('ExerciseBlock JSON roundtrip is symmetric', () {
       const block = ExerciseBlock(
-        id: 'workout-a-bench',
+        id: 'day-1-bench',
         exerciseId: 'barbell-bench-press',
         minSets: 3,
         maxSets: 3,
@@ -44,11 +44,11 @@ void main() {
 
     test('Workout JSON roundtrip is symmetric', () {
       const workout = Workout(
-        id: 'workout-a',
-        name: 'Workout A',
+        id: 'day-1',
+        name: 'Day 1',
         blocks: [
           ExerciseBlock(
-            id: 'workout-a-bench',
+            id: 'day-1-bench',
             exerciseId: 'barbell-bench-press',
             minSets: 3,
             maxSets: 3,
@@ -76,11 +76,11 @@ void main() {
         schedulePattern: ['A', 'B'],
         workouts: [
           Workout(
-            id: 'workout-a',
-            name: 'Workout A',
+            id: 'day-1',
+            name: 'Day 1',
             blocks: [
               ExerciseBlock(
-                id: 'workout-a-bench',
+                id: 'day-1-bench',
                 exerciseId: 'barbell-bench-press',
                 minSets: 3,
                 maxSets: 3,
@@ -130,7 +130,7 @@ void main() {
         isBarbell: false,
       );
       const block = ExerciseBlock(
-        id: 'workout-b-row',
+        id: 'day-2-row',
         exerciseId: 'seated-row',
         minSets: 3,
         maxSets: 3,
@@ -140,13 +140,13 @@ void main() {
         restMaxSeconds: 180,
       );
       const workout = Workout(
-        id: 'workout-b',
-        name: 'Workout B',
+        id: 'day-2',
+        name: 'Day 2',
         blocks: [block],
       );
       const matchingWorkout = Workout(
-        id: 'workout-b',
-        name: 'Workout B',
+        id: 'day-2',
+        name: 'Day 2',
         blocks: [block],
       );
       const program = Program(

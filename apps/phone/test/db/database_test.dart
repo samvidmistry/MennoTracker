@@ -17,21 +17,21 @@ void main() {
   test('WorkoutSessionDao inserts and lists newest first', () async {
     final older = shared.WorkoutSession(
       id: 'older-session',
-      programId: 'reduced-v1',
-      workoutId: 'workout-a',
+      programId: 'bro-split-v1',
+      workoutId: 'day-1',
       dateUtc: DateTime.utc(2025, 1, 1),
       startedAt: DateTime.utc(2025, 1, 1, 8),
       completedAt: DateTime.utc(2025, 1, 1, 9),
       entries: [
         shared.ExerciseEntry(
-          blockId: 'block-a',
-          exerciseId: 'barbell-bench-press',
+          blockId: 'day-1-bench-press',
+          exerciseId: 'bench-press',
           workingWeightKg: 80,
           sets: [
             shared.SetLog(
-              targetRepMin: 6,
-              targetRepMax: 10,
-              actualReps: 8,
+              targetRepMin: 4,
+              targetRepMax: 6,
+              actualReps: 6,
               completedAt: DateTime.utc(2025, 1, 1, 8, 30),
             ),
           ],
@@ -40,8 +40,8 @@ void main() {
     );
     final newer = shared.WorkoutSession(
       id: 'newer-session',
-      programId: 'reduced-v1',
-      workoutId: 'workout-b',
+      programId: 'bro-split-v1',
+      workoutId: 'day-2',
       dateUtc: DateTime.utc(2025, 1, 2),
       startedAt: DateTime.utc(2025, 1, 2, 8),
     );
@@ -57,7 +57,7 @@ void main() {
 
   test('ExerciseStateDao upserts and preserves weight history', () async {
     final state = shared.ExerciseState(
-      exerciseId: 'high-bar-squat',
+      exerciseId: 'squat',
       currentWorkingWeightKg: 100,
       lastUpdatedAt: DateTime.utc(2025, 1, 3),
       history: [

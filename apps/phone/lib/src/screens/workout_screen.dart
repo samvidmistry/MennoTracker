@@ -406,13 +406,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     _notifyEntriesChanged();
 
     unawaited(_signalSetCompleted(setLog, block.id));
-    if (ref
-        .read(progressionEngineProvider)
-        .shouldDeloadRemainingSets(updatedEntry, block)) {
+    if (setLog.isFailed || setLog.actualReps < setLog.targetRepMin) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-              'Last set under range — consider dropping remaining sets ~10%.'),
+              'Below the target minimum - repeat this next time to trigger a 10% reduction.'),
         ),
       );
     }
@@ -548,8 +546,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       entries: List<shared.ExerciseEntry>.unmodifiable(_entries),
     );
 
-    await ref.read(sessionRepoProvider).insert(completed);
-    await _updateProgressionStates(completedAt);
+    final sessionRepo = ref.read(sessionRepoProvider);
+    final priorSessions = await sessionRepo.listAll();
+    await sessionRepo.insert(completed);
+    await _updateProgressionStates(completedAt, priorSessions);
 
     if (!mounted) {
       return;
@@ -559,7 +559,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     navigator.pushNamedAndRemoveUntil('/history', (route) => false);
   }
 
-  Future<void> _updateProgressionStates(DateTime atUtc) async {
+  Future<void> _updateProgressionStates(
+    DateTime atUtc,
+    List<shared.WorkoutSession> priorSessions,
+  ) async {
     final stateDao = ref.read(exerciseStateRepoProvider);
     final engine = ref.read(progressionEngineProvider);
     final program = ref.read(programProvider);
@@ -571,6 +574,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       final suggestion = engine.computeNextSuggestion(
         state: state,
         lastEntry: entry,
+        previousEntry: _previousEntryFor(entry.exerciseId, priorSessions),
         block: block,
         exercise: program.exerciseById(entry.exerciseId),
       );
@@ -584,7 +588,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         continue;
       }
 
-      final fromKg = state?.currentWorkingWeightKg ?? entry.workingWeightKg;
+      final fromKg = entry.workingWeightKg;
       final history = [
         ...?state?.history,
         shared.WeightChange(
@@ -603,6 +607,20 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         ),
       );
     }
+  }
+
+  shared.ExerciseEntry? _previousEntryFor(
+    String exerciseId,
+    List<shared.WorkoutSession> sessions,
+  ) {
+    for (final session in sessions) {
+      for (final entry in session.entries) {
+        if (entry.exerciseId == exerciseId) {
+          return entry;
+        }
+      }
+    }
+    return null;
   }
 
   static final _defaultInventory = <double, int>{

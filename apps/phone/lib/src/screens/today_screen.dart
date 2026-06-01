@@ -82,7 +82,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                         if (data.sessions.isEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            "No sessions yet — let's start with Workout A!",
+                            "No sessions yet - let's start with ${workout.name}.",
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ],
@@ -127,18 +127,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 
   Workout _nextWorkout(Program program, List<shared.WorkoutSession> sessions) {
     if (sessions.isEmpty) {
-      return program.workouts.firstWhere(
-        (workout) => workout.id == 'workout-a',
-        orElse: () => program.workouts.first,
-      );
+      return program.workouts.first;
     }
 
     final lastWorkoutId = sessions.first.workoutId;
-    final nextId = lastWorkoutId == 'workout-a' ? 'workout-b' : 'workout-a';
-    return program.workouts.firstWhere(
-      (workout) => workout.id == nextId,
-      orElse: () => program.workouts.first,
+    final lastIndex = program.workouts.indexWhere(
+      (workout) => workout.id == lastWorkoutId,
     );
+    if (lastIndex == -1) {
+      return program.workouts.first;
+    }
+    return program.workouts[(lastIndex + 1) % program.workouts.length];
   }
 
   Map<String, double> _suggestedWeights(
@@ -157,6 +156,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             .computeNextSuggestion(
               state: statesByExercise[block.exerciseId],
               lastEntry: data.lastEntryFor(block.exerciseId),
+              previousEntry: data.previousEntryFor(block.exerciseId),
               block: block,
               exercise: program.exerciseById(block.exerciseId),
             )
@@ -221,10 +221,22 @@ class _TodayData {
   final List<shared.WorkoutSession> sessions;
 
   shared.ExerciseEntry? lastEntryFor(String exerciseId) {
+    return _entryFor(exerciseId, skip: 0);
+  }
+
+  shared.ExerciseEntry? previousEntryFor(String exerciseId) {
+    return _entryFor(exerciseId, skip: 1);
+  }
+
+  shared.ExerciseEntry? _entryFor(String exerciseId, {required int skip}) {
+    var matchesToSkip = skip;
     for (final session in sessions) {
       for (final entry in session.entries) {
         if (entry.exerciseId == exerciseId) {
-          return entry;
+          if (matchesToSkip == 0) {
+            return entry;
+          }
+          matchesToSkip -= 1;
         }
       }
     }

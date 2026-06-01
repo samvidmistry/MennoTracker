@@ -1,5 +1,5 @@
 name: program
-description: Program definition + reduced Galpin/Henselmans variant for MennoTracker.
+description: Program definition for the MennoTracker 5-day bro split.
 publish_to: 'none'
 version: 0.1.0
 

@@ -32,7 +32,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   var _unit = 'kg';
   var _hapticEnabled = true;
   var _audioEnabled = true;
-  var _incrementPercent = 0.025;
   var _deloadPercent = 0.10;
   var _inventory = Map<double, int>.from(_defaultInventory);
   var _healthStatus = _HealthKitStatus.notRequested;
@@ -51,7 +50,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final haptic = await repo.getString('rest_haptic_enabled');
     final audio = await repo.getString('rest_audio_enabled');
     final inventory = _decodeInventory(await repo.getString('plate_inventory'));
-    final increment = await repo.getDouble('progression_increment_percent') ?? 0.025;
     final deload = await repo.getDouble('progression_deload_percent') ?? 0.10;
 
     if (!mounted) {
@@ -62,7 +60,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _hapticEnabled = haptic == null ? true : haptic == 'true';
       _audioEnabled = audio == null ? true : audio == 'true';
       _inventory = inventory;
-      _incrementPercent = increment;
       _deloadPercent = deload;
     });
     _publishProgressionConfig();
@@ -111,7 +108,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             SwitchListTile(
               title: const Text('Haptic alerts'),
               value: _hapticEnabled,
-              onChanged: (value) => _setRestToggle('rest_haptic_enabled', value),
+              onChanged: (value) =>
+                  _setRestToggle('rest_haptic_enabled', value),
             ),
             SwitchListTile(
               title: const Text('Audio alert'),
@@ -142,14 +140,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SettingsSection(
           title: 'Progression',
           children: [
-            _PercentSlider(
-              label: 'Increment',
-              value: _incrementPercent,
-              min: 0.005,
-              max: 0.05,
-              divisions: 9,
-              onChanged: (value) => _setProgression(increment: value),
-            ),
             _PercentSlider(
               label: 'Deload',
               value: _deloadPercent,
@@ -183,17 +173,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: 'Program',
           children: [
             RadioGroup<String>(
-              groupValue: 'reduced',
+              groupValue: 'bro-split',
               onChanged: (_) {},
               child: const Column(
                 children: [
                   RadioListTile<String>(
-                    title: Text('Reduced (current)'),
-                    value: 'reduced',
+                    title: Text('5-day bro split (current)'),
+                    value: 'bro-split',
                   ),
                   RadioListTile<String>(
-                    title: Text('Official version (coming in v2)'),
-                    value: 'official',
+                    title: Text('More programs (coming later)'),
+                    value: 'more',
                     enabled: false,
                   ),
                 ],
@@ -237,31 +227,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(settingsRepoProvider).setString(
           'plate_inventory',
           jsonEncode({
-            for (final entry in _inventory.entries) _formatPlate(entry.key): entry.value,
+            for (final entry in _inventory.entries)
+              _formatPlate(entry.key): entry.value,
           }),
         );
   }
 
-  Future<void> _setProgression({double? increment, double? deload}) async {
+  Future<void> _setProgression({double? deload}) async {
     setState(() {
-      if (increment != null) {
-        _incrementPercent = _roundToStep(increment, 0.005);
-      }
       if (deload != null) {
         _deloadPercent = _roundToStep(deload, 0.01);
       }
     });
     _publishProgressionConfig();
     final repo = ref.read(settingsRepoProvider);
-    await repo.setDouble('progression_increment_percent', _incrementPercent);
     await repo.setDouble('progression_deload_percent', _deloadPercent);
   }
 
   void _publishProgressionConfig() {
     ref.read(progressionConfigProvider.notifier).state = ProgressionConfig(
-          incrementPercent: _incrementPercent,
-          deloadPercent: _deloadPercent,
-        );
+      deloadPercent: _deloadPercent,
+    );
   }
 
   Future<void> _testWatchReachability() async {
@@ -315,7 +301,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
       setState(() {
-        _healthStatus = granted ? _HealthKitStatus.available : _HealthKitStatus.denied;
+        _healthStatus =
+            granted ? _HealthKitStatus.available : _HealthKitStatus.denied;
       });
     } catch (error) {
       if (mounted) {
@@ -507,8 +494,11 @@ enum _HealthKitStatus {
   String get description => switch (this) {
         _HealthKitStatus.available => 'Workout writes are ready.',
         _HealthKitStatus.denied => 'Permission was denied or unavailable.',
-        _HealthKitStatus.notRequested => 'Tap Request access on an iPhone to enable workout writes.',
-        _HealthKitStatus.notEntitled => 'The app is running without the HealthKit entitlement.',
-        _HealthKitStatus.notAvailable => 'HealthKit: not available on this platform.',
+        _HealthKitStatus.notRequested =>
+          'Tap Request access on an iPhone to enable workout writes.',
+        _HealthKitStatus.notEntitled =>
+          'The app is running without the HealthKit entitlement.',
+        _HealthKitStatus.notAvailable =>
+          'HealthKit: not available on this platform.',
       };
 }

@@ -1,4 +1,4 @@
 library;
 
 export 'src/models.dart';
-export 'src/reduced_program.dart';
+export 'src/bro_split_program.dart';

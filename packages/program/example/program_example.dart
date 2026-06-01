@@ -1,7 +1,7 @@
 import 'package:program/program.dart';
 
 void main() {
-  final program = kReducedProgram;
+  final program = kBroSplitProgram;
   print('${program.name} — ${program.workouts.length} workouts, '
       '${program.exercises.length} exercises');
   for (final w in program.workouts) {

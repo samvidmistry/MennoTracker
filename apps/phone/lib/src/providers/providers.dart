@@ -24,7 +24,7 @@ final settingsRepoProvider = Provider<SettingsDao>(
   (ref) => ref.watch(databaseProvider).settingsDao,
 );
 
-final programProvider = Provider<Program>((ref) => kReducedProgram);
+final programProvider = Provider<Program>((ref) => kBroSplitProgram);
 
 final progressionConfigProvider = StateProvider<ProgressionConfig>(
   (ref) => const ProgressionConfig(),

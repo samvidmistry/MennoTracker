@@ -108,9 +108,9 @@ void main() {
 
     test('WatchPayload changes one field', () {
       final original = sampleWatchPayload();
-      final changed = original.copyWith(workoutName: 'Workout B');
+      final changed = original.copyWith(workoutName: 'Day 2 - Back + Biceps');
 
-      expect(changed.workoutName, 'Workout B');
+      expect(changed.workoutName, 'Day 2 - Back + Biceps');
       expect(changed.schemaVersion, original.schemaVersion);
       expect(changed.sessionId, original.sessionId);
       expect(changed.workoutId, original.workoutId);
@@ -165,7 +165,7 @@ void main() {
     final session = WorkoutSession(
       id: 'session-1',
       programId: 'program-1',
-      workoutId: 'workout-a',
+      workoutId: 'day-1',
       dateUtc: local,
       startedAt: local.add(const Duration(minutes: 5)),
       completedAt: local.add(const Duration(hours: 1)),
@@ -227,7 +227,7 @@ void main() {
     final session = WorkoutSession(
       id: 'session-list-test',
       programId: 'program-1',
-      workoutId: 'workout-a',
+      workoutId: 'day-1',
       dateUtc: DateTime.utc(2025, 1, 1),
       startedAt: DateTime.utc(2025, 1, 1, 12),
       entries: List<ExerciseEntry>.generate(
@@ -294,7 +294,7 @@ ExerciseEntry sampleExerciseEntry({int index = 0}) => ExerciseEntry(
 WorkoutSession sampleWorkoutSession() => WorkoutSession(
       id: 'session-1',
       programId: 'program-1',
-      workoutId: 'workout-a',
+      workoutId: 'day-1',
       dateUtc: DateTime.utc(2025, 1, 1),
       startedAt: DateTime.utc(2025, 1, 1, 12),
       completedAt: DateTime.utc(2025, 1, 1, 13),
@@ -318,8 +318,8 @@ WatchExerciseBlock sampleWatchExerciseBlock({int index = 0}) =>
 
 WatchPayload sampleWatchPayload() => WatchPayload(
       sessionId: 'session-1',
-      workoutId: 'workout-a',
-      workoutName: 'Workout A',
+      workoutId: 'day-1',
+      workoutName: 'Day 1 - Chest + Triceps',
       blocks: <WatchExerciseBlock>[
         sampleWatchExerciseBlock(),
         sampleWatchExerciseBlock(index: 1),

@@ -49,6 +49,13 @@ class ExerciseCard extends ConsumerWidget {
                     'Rest: ${_minutes(block.restMinSeconds)}–${_minutes(block.restMaxSeconds)} min',
                     style: theme.textTheme.bodySmall,
                   ),
+                  if (block.equipmentHint != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      block.equipmentHint!,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
                 ],
               ),
             ),

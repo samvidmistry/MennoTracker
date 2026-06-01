@@ -8,7 +8,7 @@
       "bundleIdentifier": "com.mennotracker.mennoTracker",
       "developerName": "Samvid Mistry",
       "subtitle": "Training and tracking companion",
-      "localizedDescription": "MennoTracker is the phone-side companion app for the reduced training program. Installed via AltStore using a free Apple ID; refreshes every 7 days while AltServer runs on the paired PC.",
+      "localizedDescription": "MennoTracker is the phone-side companion app for the 5-day bro split + compound maintenance program. Installed via AltStore using a free Apple ID; refreshes every 7 days while AltServer runs on the paired PC.",
       "iconURL": "https://raw.githubusercontent.com/samvidmistry/MennoTracker/master/altstore/icon.png",
       "tintColor": "5856D6",
       "category": "utilities",

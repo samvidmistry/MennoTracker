@@ -2,11 +2,11 @@
 
 [![Status](https://img.shields.io/badge/status-CI%20coming%20soon-lightgrey)](#)
 
-MennoTracker is a StrongLifts-style workout tracker for the Andy Galpin and Menno Henselmans 8-week ABAB hypertrophy program. Version 1 targets the reduced program and focuses on set-by-set logging, rest timers with haptics, plate math, progression suggestions, and useful history graphs.
+MennoTracker is a StrongLifts-style workout tracker for a 5-day bro split with compound maintenance. Version 1 focuses on set-by-set logging, rest timers with haptics, plate math, progression suggestions, and useful history graphs.
 
 The app is designed for iPhone plus Apple Watch while staying friendly to development from Windows. Phone-side Flutter work, Dart business logic, persistence, and package tests can run locally on Windows; macOS-only iOS and watchOS builds are reserved for cloud CI or a borrowed Mac.
 
-The data model keeps room for the official program variant, but v1 only exposes the reduced version. Adding the official version later should be a data addition rather than an app rewrite.
+The data model keeps room for future program variants, but v1 exposes the 5-day bro split only. Adding another version later should be a data addition rather than an app rewrite.
 
 ## Repository layout
 
@@ -29,7 +29,7 @@ The data model keeps room for the official program variant, but v1 only exposes 
 1. Install Flutter and Dart, then make sure `flutter` and `dart` are on `PATH`.
 2. From the repository root, fetch workspace dependencies:
    ```powershell
-   dart pub get
+   flutter pub get
    ```
 3. Run phone tests:
    ```powershell

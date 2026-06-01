@@ -63,7 +63,7 @@ class Exercise {
       );
 }
 
-enum ExerciseCategory { legs, push, pull, calves, shoulders, arms, hinge }
+enum ExerciseCategory { legs, push, pull, calves, shoulders, arms, hinge, core }
 
 @immutable
 class ExerciseBlock {

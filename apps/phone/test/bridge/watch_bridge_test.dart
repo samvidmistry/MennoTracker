@@ -23,18 +23,18 @@ void main() {
       () async {
     final payload = WatchPayload(
       sessionId: 'session-1',
-      workoutId: 'workout-a',
-      workoutName: 'Workout A',
+      workoutId: 'day-1',
+      workoutName: 'Day 1 - Chest + Triceps',
       blocks: const [
         WatchExerciseBlock(
-          blockId: 'block-1',
-          exerciseId: 'barbell-bench-press',
-          exerciseName: 'Barbell bench press',
+          blockId: 'day-1-bench-press',
+          exerciseId: 'bench-press',
+          exerciseName: 'Bench press',
           workingWeightKg: 80,
-          targetSets: 3,
-          repMin: 6,
-          repMax: 10,
-          restSeconds: 180,
+          targetSets: 2,
+          repMin: 4,
+          repMax: 6,
+          restSeconds: 120,
         ),
       ],
     );
