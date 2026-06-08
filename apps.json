@@ -14,14 +14,22 @@
       "category": "utilities",
       "screenshots": [],
       "screenshotURLs": [],
-      "version": "0.3.0",
-      "buildVersion": "8",
-      "versionDate": "2026-06-08T10:24:22Z",
+      "version": "0.3.1",
+      "buildVersion": "9",
+      "versionDate": "2026-06-08T12:46:12Z",
       "versionDescription": "Latest release.",
-      "size": 9110060,
-      "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.3.0/MennoTracker.ipa",
+      "size": 9109812,
+      "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.3.1/MennoTracker.ipa",
       "minOSVersion": "13.0",
       "versions": [
+        {
+          "version": "0.3.1",
+          "buildVersion": "9",
+          "date": "2026-06-08T12:46:12Z",
+          "size": 9109812,
+          "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.3.1/MennoTracker.ipa",
+          "minOSVersion": "13.0"
+        },
         {
           "version": "0.3.0",
           "buildVersion": "8",
