@@ -17,14 +17,7 @@ class TodayScreen extends ConsumerStatefulWidget {
 }
 
 class _TodayScreenState extends ConsumerState<TodayScreen> {
-  static const int _horizonSessions = 10; // 2 weeks at 5 sessions/week.
-  static const Set<int> _workoutWeekdays = {
-    DateTime.monday,
-    DateTime.tuesday,
-    DateTime.wednesday,
-    DateTime.thursday,
-    DateTime.friday,
-  };
+  static const int _horizonSessions = 14; // 2 weeks of consecutive days.
 
   late Future<_TodayData> _future;
   final PageController _pageController = PageController();
@@ -142,7 +135,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                       );
                     },
                   ),
-                  if (_currentPage == 0 && sessions.isNotEmpty)
+                  if (sessions.isNotEmpty)
                     Positioned(
                       left: 16,
                       right: 16,
@@ -152,11 +145,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                           height: 60,
                           child: FilledButton.icon(
                             key: const Key('start-workout'),
-                            onPressed: () => _startWorkout(
-                              program,
-                              sessions.first.workout,
-                              sessions.first.suggestions,
-                            ),
+                            onPressed: () {
+                              final current = sessions[
+                                  _currentPage.clamp(0, sessions.length - 1)];
+                              _startWorkout(
+                                program,
+                                current.workout,
+                                current.suggestions,
+                              );
+                            },
                             icon: const Icon(Icons.play_arrow),
                             label: const Text('Start Workout'),
                           ),
@@ -214,16 +211,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   List<DateTime> _scheduleDates(int count) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final dates = <DateTime>[today];
-    var offset = 1;
-    while (dates.length < count) {
-      final day = DateTime(today.year, today.month, today.day + offset);
-      if (_workoutWeekdays.contains(day.weekday)) {
-        dates.add(day);
-      }
-      offset += 1;
-    }
-    return dates;
+    return [
+      for (var offset = 0; offset < count; offset += 1)
+        DateTime(today.year, today.month, today.day + offset),
+    ];
   }
 
   Workout _followingWorkout(Program program, Workout current) {

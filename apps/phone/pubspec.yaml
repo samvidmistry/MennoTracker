@@ -1,7 +1,7 @@
 name: menno_tracker
 description: MennoTracker — StrongLifts-style tracker for a 5-day bro split.
 publish_to: 'none'
-version: 0.3.0+8
+version: 0.3.1+9
 
 environment:
   sdk: ^3.5.0

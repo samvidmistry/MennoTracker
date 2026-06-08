@@ -73,8 +73,7 @@ void main() {
     expect(find.textContaining('Today:'), findsNothing);
   });
 
-  testWidgets('Start Workout button only shows on the today page',
-      (tester) async {
+  testWidgets('Start Workout button shows on every page', (tester) async {
     await _pumpToday(tester, database);
 
     expect(find.byKey(const Key('start-workout')), findsOneWidget);
@@ -82,7 +81,35 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(-600, 0));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('start-workout')), findsNothing);
+    expect(find.byKey(const Key('start-workout')), findsOneWidget);
+  });
+
+  testWidgets('starting from a future page starts that previewed workout',
+      (tester) async {
+    final container = ProviderContainer(
+      overrides: [databaseProvider.overrideWithValue(database)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: const Scaffold(body: TodayScreen()),
+          routes: {'/workout': (_) => const Scaffold()},
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(PageView), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('start-workout')));
+    await tester.pumpAndSettle();
+
+    expect(container.read(activeWorkoutProvider)?.workout.id, 'day-2');
   });
 
   testWidgets('Day 1 bench suggestion increases after two top sets',
