@@ -60,6 +60,31 @@ void main() {
     expect(find.text('Day 1 - Chest + Triceps'), findsOneWidget);
   });
 
+  testWidgets('swiping reveals the next future workout', (tester) async {
+    await _pumpToday(tester, database);
+
+    expect(find.textContaining('Today:'), findsOneWidget);
+    expect(find.text('Day 1 - Chest + Triceps'), findsOneWidget);
+
+    await tester.drag(find.byType(PageView), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Day 2 - Back + Biceps'), findsOneWidget);
+    expect(find.textContaining('Today:'), findsNothing);
+  });
+
+  testWidgets('Start Workout button only shows on the today page',
+      (tester) async {
+    await _pumpToday(tester, database);
+
+    expect(find.byKey(const Key('start-workout')), findsOneWidget);
+
+    await tester.drag(find.byType(PageView), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('start-workout')), findsNothing);
+  });
+
   testWidgets('Day 1 bench suggestion increases after two top sets',
       (tester) async {
     await database.workoutSessionDao.insert(

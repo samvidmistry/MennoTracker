@@ -17,12 +17,29 @@ class TodayScreen extends ConsumerStatefulWidget {
 }
 
 class _TodayScreenState extends ConsumerState<TodayScreen> {
+  static const int _horizonSessions = 10; // 2 weeks at 5 sessions/week.
+  static const Set<int> _workoutWeekdays = {
+    DateTime.monday,
+    DateTime.tuesday,
+    DateTime.wednesday,
+    DateTime.thursday,
+    DateTime.friday,
+  };
+
   late Future<_TodayData> _future;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<_TodayData> _load() async {
@@ -49,74 +66,104 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         }
 
         final data = snapshot.data ?? const _TodayData();
-        final workout = _nextWorkout(program, data.sessions);
-        final suggestions = _suggestedWeights(program, workout, data);
-        final now = DateTime.now();
+        final sessions = _plannedSessions(program, data);
 
-        return Stack(
+        return Column(
           children: [
-            RefreshIndicator(
-              onRefresh: () async => _refresh(),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(0, 16, 0, 112),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Today: ${DateFormat.EEEE().format(now)}, ${DateFormat.MMMd().format(now)}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          workout.name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        if (data.sessions.isEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            "No sessions yet - let's start with ${workout.name}.",
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final block in workout.blocks)
-                    ExerciseCard(
-                      block: block,
-                      exercise: program.exerciseById(block.exerciseId),
-                      suggestedWeightKg: suggestions[block.id] ?? 20,
-                      setsTarget: block.maxSets,
-                      repMin: block.repMin,
-                      repMax: block.repMax,
-                    ),
-                ],
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              child: _PageIndicator(
+                count: sessions.length,
+                currentIndex: _currentPage,
               ),
             ),
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: SafeArea(
-                child: SizedBox(
-                  height: 60,
-                  child: FilledButton.icon(
-                    key: const Key('start-workout'),
-                    onPressed: () =>
-                        _startWorkout(program, workout, suggestions),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start Workout'),
+            Expanded(
+              child: Stack(
+                children: [
+                  PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (index) =>
+                        setState(() => _currentPage = index),
+                    itemCount: sessions.length,
+                    itemBuilder: (context, index) {
+                      final session = sessions[index];
+                      return RefreshIndicator(
+                        onRefresh: () async => _refresh(),
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(0, 16, 0, 112),
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _dateLabel(session),
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    session.workout.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                  if (session.isToday &&
+                                      data.sessions.isEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "No sessions yet - let's start with ${session.workout.name}.",
+                                      style:
+                                          Theme.of(context).textTheme.bodyLarge,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            for (final block in session.workout.blocks)
+                              ExerciseCard(
+                                block: block,
+                                exercise:
+                                    program.exerciseById(block.exerciseId),
+                                suggestedWeightKg:
+                                    session.suggestions[block.id] ?? 20,
+                                setsTarget: block.maxSets,
+                                repMin: block.repMin,
+                                repMax: block.repMax,
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                ),
+                  if (_currentPage == 0 && sessions.isNotEmpty)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
+                      child: SafeArea(
+                        child: SizedBox(
+                          height: 60,
+                          child: FilledButton.icon(
+                            key: const Key('start-workout'),
+                            onPressed: () => _startWorkout(
+                              program,
+                              sessions.first.workout,
+                              sessions.first.suggestions,
+                            ),
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('Start Workout'),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -138,6 +185,63 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       return program.workouts.first;
     }
     return program.workouts[(lastIndex + 1) % program.workouts.length];
+  }
+
+  List<_PlannedSession> _plannedSessions(Program program, _TodayData data) {
+    final dates = _scheduleDates(_horizonSessions);
+    final suggestionCache = <String, Map<String, double>>{};
+
+    var workout = _nextWorkout(program, data.sessions);
+    final sessions = <_PlannedSession>[];
+    for (var index = 0; index < dates.length; index += 1) {
+      final suggestions = suggestionCache.putIfAbsent(
+        workout.id,
+        () => _suggestedWeights(program, workout, data),
+      );
+      sessions.add(
+        _PlannedSession(
+          date: dates[index],
+          isToday: index == 0,
+          workout: workout,
+          suggestions: suggestions,
+        ),
+      );
+      workout = _followingWorkout(program, workout);
+    }
+    return sessions;
+  }
+
+  List<DateTime> _scheduleDates(int count) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dates = <DateTime>[today];
+    var offset = 1;
+    while (dates.length < count) {
+      final day = DateTime(today.year, today.month, today.day + offset);
+      if (_workoutWeekdays.contains(day.weekday)) {
+        dates.add(day);
+      }
+      offset += 1;
+    }
+    return dates;
+  }
+
+  Workout _followingWorkout(Program program, Workout current) {
+    final index =
+        program.workouts.indexWhere((workout) => workout.id == current.id);
+    if (index == -1) {
+      return program.workouts.first;
+    }
+    return program.workouts[(index + 1) % program.workouts.length];
+  }
+
+  String _dateLabel(_PlannedSession session) {
+    if (session.isToday) {
+      return 'Today: ${DateFormat.EEEE().format(session.date)}, '
+          '${DateFormat.MMMd().format(session.date)}';
+    }
+    return '${DateFormat.E().format(session.date)}, '
+        '${DateFormat.MMMd().format(session.date)}';
   }
 
   Map<String, double> _suggestedWeights(
@@ -208,6 +312,50 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     }
 
     Navigator.of(context).pushReplacementNamed('/workout');
+  }
+}
+
+class _PlannedSession {
+  const _PlannedSession({
+    required this.date,
+    required this.isToday,
+    required this.workout,
+    required this.suggestions,
+  });
+
+  final DateTime date;
+  final bool isToday;
+  final Workout workout;
+  final Map<String, double> suggestions;
+}
+
+class _PageIndicator extends StatelessWidget {
+  const _PageIndicator({required this.count, required this.currentIndex});
+
+  final int count;
+  final int currentIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var index = 0; index < count; index += 1)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: index == currentIndex ? 20 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: index == currentIndex
+                  ? color
+                  : color.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+      ],
+    );
   }
 }
 
