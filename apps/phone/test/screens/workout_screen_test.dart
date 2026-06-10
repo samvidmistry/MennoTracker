@@ -111,6 +111,60 @@ void main() {
     expect(saved!.entries.single.workingWeightKg, 22.5);
   });
 
+  testWidgets('warm-up sets are logged without counting as working sets',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final session = shared.WorkoutSession(
+      id: 'warmup-session',
+      programId: _program.id,
+      workoutId: _workout.id,
+      dateUtc: DateTime.utc(2025, 1, 1),
+      startedAt: DateTime.utc(2025, 1, 1, 8),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          programProvider.overrideWithValue(_program),
+        ],
+        child: MaterialApp(
+          routes: {
+            '/history': (_) => const Scaffold(body: Text('History reached')),
+          },
+          home: WorkoutScreen(
+            session: session,
+            workout: _workout,
+            suggestedWeightsKg: const {'tiny-block': 20},
+          ),
+        ),
+      ),
+    );
+
+    // Logging a warm-up should not finish the single working set.
+    await tester.tap(find.byKey(const Key('add-warmup-set')));
+    await tester.pumpAndSettle();
+    expect(find.text('Warm-ups'), findsOneWidget);
+    expect(find.byKey(const Key('finish-workout')), findsNothing);
+    expect(find.byKey(const Key('done-set')), findsOneWidget);
+
+    // The working set still needs to be logged.
+    await tester.tap(find.byKey(const Key('done-set')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('finish-workout')));
+    await tester.pumpAndSettle();
+
+    final saved = await database.workoutSessionDao.byId('warmup-session');
+    expect(saved, isNotNull);
+    final sets = saved!.entries.single.sets;
+    expect(sets.where((s) => s.isWarmup).length, 1);
+    expect(sets.where((s) => !s.isWarmup).length, 1);
+  });
+
   testWidgets('started workout remains available from the Workout tab',
       (tester) async {
     final container = ProviderContainer(

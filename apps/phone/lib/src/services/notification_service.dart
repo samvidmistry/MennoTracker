@@ -10,10 +10,15 @@ class NotificationService {
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const int restCompleteId = 1001;
+  static const int restActivityId = 1002;
   static const String _restChannelId = 'rest_timer_complete';
   static const String _restChannelName = 'Rest timer';
   static const String _restChannelDescription =
       'Notifies when the rest timer between sets finishes.';
+  static const String _restActivityChannelId = 'rest_timer_active';
+  static const String _restActivityChannelName = 'Rest timer (live)';
+  static const String _restActivityChannelDescription =
+      'Shows a live countdown while you rest between sets.';
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
@@ -140,6 +145,66 @@ class NotificationService {
     }
     try {
       await _plugin.cancel(restCompleteId);
+    } catch (_) {}
+  }
+
+  /// Shows (or refreshes) an ongoing "live activity" notification that counts
+  /// down to [endAtUtc]. On Android this renders as a chronometer that keeps
+  /// ticking even when the in-app rest sheet is dismissed or the app is
+  /// backgrounded.
+  Future<void> showRestLiveActivity(DateTime endAtUtc) async {
+    if (!_initialized) {
+      await initialize();
+    }
+    if (!_initialized) {
+      return;
+    }
+    final granted = await _ensurePermission();
+    if (!granted) {
+      return;
+    }
+    try {
+      await _plugin.show(
+        restActivityId,
+        'Resting',
+        'Rest timer running',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _restActivityChannelId,
+            _restActivityChannelName,
+            channelDescription: _restActivityChannelDescription,
+            importance: Importance.low,
+            priority: Priority.low,
+            category: AndroidNotificationCategory.stopwatch,
+            ongoing: true,
+            autoCancel: false,
+            onlyAlertOnce: true,
+            showWhen: true,
+            when: endAtUtc.millisecondsSinceEpoch,
+            usesChronometer: true,
+            chronometerCountDown: true,
+            playSound: false,
+            enableVibration: false,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: false,
+            presentBadge: false,
+            presentBanner: false,
+            presentSound: false,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Best-effort: swallow errors (e.g. missing platform binding in tests).
+    }
+  }
+
+  Future<void> cancelRestLiveActivity() async {
+    if (!_initialized) {
+      return;
+    }
+    try {
+      await _plugin.cancel(restActivityId);
     } catch (_) {}
   }
 }

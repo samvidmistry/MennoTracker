@@ -9,6 +9,7 @@ import 'package:progression/progression.dart';
 import 'package:shared_models/shared_models.dart' as shared;
 
 import '../providers/providers.dart';
+import '../services/notification_service.dart';
 import '../widgets/exercise_card.dart';
 import '../widgets/numeric_rep_input.dart';
 import '../widgets/plate_calculator.dart';
@@ -102,7 +103,8 @@ class WorkoutScreen extends ConsumerStatefulWidget {
   ConsumerState<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
-class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
+class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
+    with WidgetsBindingObserver {
   var _currentBlockIndex = 0;
   var _currentSetIndex = 0;
   var _currentReps = 0;
@@ -110,11 +112,46 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   var _readyToFinish = false;
   late List<shared.ExerciseEntry> _entries;
 
+  Timer? _restTimer;
+  DateTime? _restEndAt;
+  Duration _restInitial = Duration.zero;
+  final ValueNotifier<Duration> _restRemaining = ValueNotifier(Duration.zero);
+  bool _restWarned = false;
+  bool _restCompleted = false;
+  bool _restSheetOpen = false;
+  NotificationService? _notifications;
+
   @override
   void initState() {
     super.initState();
     _entries = _initialEntries();
     _restoreProgressFromEntries();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _notifications = ref.read(notificationServiceProvider);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _restTimer?.cancel();
+    _restRemaining.dispose();
+    final notifications = _notifications;
+    if (notifications != null) {
+      unawaited(notifications.cancelRestLiveActivity());
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _resyncRest();
+    }
   }
 
   @override
@@ -137,7 +174,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     final block = widget.workout.blocks[_currentBlockIndex];
     final exercise = program.exerciseById(block.exerciseId);
     final entry = _entries[_currentBlockIndex];
-    final completedSets = entry.sets.length;
+    final workingSets = _workingSets(entry);
+    final warmupSets = _warmupSets(entry);
+    final completedSets = workingSets.length;
     final progress = (_currentBlockIndex + completedSets / block.maxSets) /
         widget.workout.blocks.length;
     final allSetsDone = _allSetsDone;
@@ -212,15 +251,33 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 20),
+                if (warmupSets.isNotEmpty) ...[
+                  Text(
+                    'Warm-ups',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final set in warmupSets)
+                        _WarmupChip(reps: set.actualReps),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
                     for (var index = 0; index < block.maxSets; index += 1)
                       SetCircle(
-                        state: _setCircleState(entry, index),
-                        reps: index < entry.sets.length
-                            ? entry.sets[index].actualReps
+                        state: _setCircleState(workingSets, index),
+                        reps: index < workingSets.length
+                            ? workingSets[index].actualReps
                             : null,
                       ),
                   ],
@@ -241,6 +298,16 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                     isResting: _isResting,
                     onTap: () => _recordSet(failed: false),
                     onLongPress: () => _recordSet(failed: true),
+                    onShowTimer: _reopenRestSheet,
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: TextButton.icon(
+                      key: const Key('add-warmup-set'),
+                      onPressed: _isResting ? null : _recordWarmupSet,
+                      icon: const Icon(Icons.whatshot_outlined),
+                      label: const Text('Add warm-up set'),
+                    ),
                   ),
                 ] else ...[
                   const SizedBox(height: 8),
@@ -309,6 +376,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     ];
   }
 
+  List<shared.SetLog> _workingSets(shared.ExerciseEntry entry) =>
+      entry.sets.where((set) => !set.isWarmup).toList();
+
+  List<shared.SetLog> _warmupSets(shared.ExerciseEntry entry) =>
+      entry.sets.where((set) => set.isWarmup).toList();
+
   void _restoreProgressFromEntries() {
     _isResting = false;
     _readyToFinish = false;
@@ -323,16 +396,16 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     for (var index = 0; index < widget.workout.blocks.length; index += 1) {
       final block = widget.workout.blocks[index];
       final entry = _entries[index];
-      if (entry.sets.length < block.maxSets) {
+      if (_workingSets(entry).length < block.maxSets) {
         _currentBlockIndex = index;
-        _currentSetIndex = entry.sets.length;
+        _currentSetIndex = _workingSets(entry).length;
         _currentReps = _defaultRepsFor(block, entry);
         return;
       }
     }
 
     _currentBlockIndex = widget.workout.blocks.length - 1;
-    _currentSetIndex = _entries[_currentBlockIndex].sets.length;
+    _currentSetIndex = _workingSets(_entries[_currentBlockIndex]).length;
     _readyToFinish = true;
     _currentReps = _defaultRepsForCurrentSet();
   }
@@ -342,9 +415,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         ?.call(List<shared.ExerciseEntry>.unmodifiable(_entries));
   }
 
-  SetState _setCircleState(shared.ExerciseEntry entry, int index) {
-    if (index < entry.sets.length) {
-      return entry.sets[index].isFailed ? SetState.failed : SetState.done;
+  SetState _setCircleState(List<shared.SetLog> workingSets, int index) {
+    if (index < workingSets.length) {
+      return workingSets[index].isFailed ? SetState.failed : SetState.done;
     }
     if (index == _currentSetIndex && !_readyToFinish) {
       return SetState.inProgress;
@@ -357,7 +430,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       return false;
     }
     for (var index = 0; index < widget.workout.blocks.length; index += 1) {
-      if (_entries[index].sets.length < widget.workout.blocks[index].maxSets) {
+      if (_workingSets(_entries[index]).length <
+          widget.workout.blocks[index].maxSets) {
         return false;
       }
     }
@@ -400,7 +474,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
 
     setState(() {
       _entries[_currentBlockIndex] = updatedEntry;
-      _currentSetIndex = updatedEntry.sets.length;
+      _currentSetIndex = _workingSets(updatedEntry).length;
       _readyToFinish = _allSetsDone;
     });
     _notifyEntriesChanged();
@@ -420,8 +494,34 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       return;
     }
 
-    setState(() => _isResting = true);
-    await _showRestTimer(Duration(seconds: block.restMinSeconds));
+    _startRest(Duration(seconds: block.restMinSeconds));
+  }
+
+  Future<void> _recordWarmupSet() async {
+    if (_isResting || _allSetsDone) {
+      return;
+    }
+
+    final block = widget.workout.blocks[_currentBlockIndex];
+    final entry = _entries[_currentBlockIndex];
+    final setLog = shared.SetLog(
+      targetRepMin: block.repMin,
+      targetRepMax: block.repMax,
+      actualReps: _currentReps,
+      completedAt: DateTime.now().toUtc(),
+      isWarmup: true,
+      isFailed: false,
+    );
+
+    setState(() {
+      _entries[_currentBlockIndex] =
+          entry.copyWith(sets: [...entry.sets, setLog]);
+    });
+    _notifyEntriesChanged();
+
+    try {
+      await HapticFeedback.selectionClick();
+    } catch (_) {}
   }
 
   Future<void> _signalSetCompleted(shared.SetLog setLog, String blockId) async {
@@ -439,29 +539,170 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   bool _hasMoreWorkAfterCurrentSet() {
     final block = widget.workout.blocks[_currentBlockIndex];
     final entry = _entries[_currentBlockIndex];
-    if (entry.sets.length < block.maxSets) {
+    if (_workingSets(entry).length < block.maxSets) {
       return true;
     }
     return _currentBlockIndex < widget.workout.blocks.length - 1;
   }
 
-  Future<void> _showRestTimer(Duration duration) async {
-    await showModalBottomSheet<void>(
+  NotificationService get _notificationService =>
+      _notifications ?? ref.read(notificationServiceProvider);
+
+  void _startRest(Duration duration) {
+    _restTimer?.cancel();
+    _restCompleted = false;
+    _restInitial = duration;
+    _restEndAt = DateTime.now().add(duration);
+    _restRemaining.value = duration;
+    _restWarned = duration.inSeconds <= 10;
+    setState(() => _isResting = true);
+
+    if (duration <= Duration.zero) {
+      _completeRest();
+      return;
+    }
+
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (_) => _restTick());
+    final endUtc = _restEndAt!.toUtc();
+    unawaited(_notificationService.showRestLiveActivity(endUtc));
+    unawaited(_notificationService.scheduleRestComplete(endUtc));
+    _showRestSheet();
+  }
+
+  void _restTick() {
+    final endAt = _restEndAt;
+    if (endAt == null || _restCompleted) {
+      return;
+    }
+    final remaining = endAt.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      _restRemaining.value = Duration.zero;
+      _completeRest();
+      return;
+    }
+    _restRemaining.value = remaining;
+    if (!_restWarned && remaining.inSeconds <= 10) {
+      _restWarned = true;
+      unawaited(_playTenSecondSignal());
+    }
+  }
+
+  void _resyncRest() {
+    if (!_isResting || _restCompleted) {
+      return;
+    }
+    final endAt = _restEndAt;
+    if (endAt == null) {
+      return;
+    }
+    final remaining = endAt.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      _restRemaining.value = Duration.zero;
+      _completeRest();
+    } else {
+      _restRemaining.value = remaining;
+    }
+  }
+
+  void _adjustRest(Duration delta) {
+    if (_restCompleted) {
+      return;
+    }
+    final now = DateTime.now();
+    var newEnd = (_restEndAt ?? now).add(delta);
+    if (newEnd.isBefore(now)) {
+      newEnd = now;
+    }
+    _restEndAt = newEnd;
+    final remaining = newEnd.difference(now);
+    _restRemaining.value = remaining.isNegative ? Duration.zero : remaining;
+    _restWarned = _restRemaining.value.inSeconds <= 10;
+
+    if (_restRemaining.value <= Duration.zero) {
+      _completeRest();
+      return;
+    }
+    final endUtc = newEnd.toUtc();
+    unawaited(_notificationService.showRestLiveActivity(endUtc));
+    unawaited(_notificationService.scheduleRestComplete(endUtc));
+  }
+
+  void _completeRest() {
+    if (_restCompleted) {
+      return;
+    }
+    _restCompleted = true;
+    _restTimer?.cancel();
+    _restTimer = null;
+    unawaited(_notificationService.cancelRestLiveActivity());
+    unawaited(_notificationService.cancelRestComplete());
+    unawaited(_playCompleteSignal());
+    _dismissRestSheet();
+    _advanceAfterRest();
+  }
+
+  void _skipRest() {
+    if (_restCompleted) {
+      return;
+    }
+    _restCompleted = true;
+    _restTimer?.cancel();
+    _restTimer = null;
+    unawaited(_notificationService.cancelRestLiveActivity());
+    unawaited(_notificationService.cancelRestComplete());
+    _dismissRestSheet();
+    _advanceAfterRest();
+  }
+
+  void _showRestSheet() {
+    if (_restSheetOpen) {
+      return;
+    }
+    _restSheetOpen = true;
+    showModalBottomSheet<void>(
       context: context,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
+      showDragHandle: true,
       builder: (context) => RestTimerWidget(
-        initial: duration,
-        onComplete: () {
-          Navigator.of(context).pop();
-          _advanceAfterRest();
-        },
-        onSkip: () {
-          Navigator.of(context).pop();
-          _advanceAfterRest();
-        },
+        initial: _restInitial,
+        remaining: _restRemaining,
+        onAdjust: _adjustRest,
+        onSkip: _skipRest,
       ),
-    );
+    ).whenComplete(() {
+      _restSheetOpen = false;
+    });
+  }
+
+  void _dismissRestSheet() {
+    if (_restSheetOpen && mounted) {
+      Navigator.of(context).pop();
+    }
+    _restSheetOpen = false;
+  }
+
+  void _reopenRestSheet() {
+    if (_isResting && !_restCompleted && !_restSheetOpen) {
+      _showRestSheet();
+    }
+  }
+
+  Future<void> _playTenSecondSignal() async {
+    try {
+      await HapticFeedback.mediumImpact();
+    } catch (_) {}
+    await ref.read(watchBridgeProvider).triggerHaptic();
+  }
+
+  Future<void> _playCompleteSignal() async {
+    try {
+      await HapticFeedback.heavyImpact();
+    } catch (_) {}
+    try {
+      await SystemSound.play(SystemSoundType.alert);
+    } catch (_) {}
+    await ref.read(watchBridgeProvider).triggerHaptic();
   }
 
   void _advanceAfterRest() {
@@ -472,8 +713,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     final entry = _entries[_currentBlockIndex];
     setState(() {
       _isResting = false;
-      if (entry.sets.length < block.maxSets) {
-        _currentSetIndex = entry.sets.length;
+      if (_workingSets(entry).length < block.maxSets) {
+        _currentSetIndex = _workingSets(entry).length;
       } else if (_currentBlockIndex < widget.workout.blocks.length - 1) {
         _currentBlockIndex += 1;
         _currentSetIndex = 0;
@@ -491,10 +732,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   }
 
   int _defaultRepsFor(ExerciseBlock block, shared.ExerciseEntry entry) {
-    if (entry.sets.isEmpty) {
+    final working = _workingSets(entry);
+    if (working.isEmpty) {
       return block.repMax;
     }
-    return entry.sets.last.actualReps;
+    return working.last.actualReps;
   }
 
   Future<void> _openPlateCalculator() async {
@@ -732,11 +974,13 @@ class _DoneSetButton extends StatelessWidget {
     required this.isResting,
     required this.onTap,
     required this.onLongPress,
+    required this.onShowTimer,
   });
 
   final bool isResting;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback onShowTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -747,14 +991,14 @@ class _DoneSetButton extends StatelessWidget {
       child: InkWell(
         key: const Key('done-set'),
         borderRadius: BorderRadius.circular(18),
-        onTap: isResting ? null : onTap,
+        onTap: isResting ? onShowTimer : onTap,
         onLongPress: isResting ? null : onLongPress,
         child: SizedBox(
           width: double.infinity,
           height: 60,
           child: Center(
             child: Text(
-              isResting ? 'Resting…' : 'Done Set',
+              isResting ? 'Resting… (tap to view)' : 'Done Set',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color:
                         isResting ? colors.onSurfaceVariant : colors.onPrimary,
@@ -763,6 +1007,34 @@ class _DoneSetButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WarmupChip extends StatelessWidget {
+  const _WarmupChip({required this.reps});
+
+  final int reps;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colors.surfaceContainerHighest,
+        border: Border.all(color: colors.outlineVariant, width: 2),
+      ),
+      child: Text(
+        '$reps',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }
