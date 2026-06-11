@@ -50,7 +50,6 @@ Use straps if grip limits back work.
 | --- | ---: | ---: | ---: |
 | Squat | 2 | 4-6 | 2-3 min |
 | Leg press / hack squat | 2 | 8-12 | 90-120 sec |
-| Leg extension | 2 | 12-20 | 60-90 sec |
 | Leg curl | 3 | 10-15 | 60-90 sec |
 | Calf raise | 2 | 8-15 | 60-90 sec |
 

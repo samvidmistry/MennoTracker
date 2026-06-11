@@ -136,16 +136,6 @@ const kBroSplitProgram = Program(
           restMaxSeconds: 120,
         ),
         ExerciseBlock(
-          id: 'day-3-leg-extension',
-          exerciseId: 'leg-extension',
-          minSets: 2,
-          maxSets: 2,
-          repMin: 12,
-          repMax: 20,
-          restMinSeconds: 60,
-          restMaxSeconds: 90,
-        ),
-        ExerciseBlock(
           id: 'day-3-leg-curl',
           exerciseId: 'leg-curl',
           minSets: 3,
@@ -374,14 +364,6 @@ const kBroSplitProgram = Program(
     Exercise(
       id: 'leg-press-hack-squat',
       name: 'Leg press / hack squat',
-      category: ExerciseCategory.legs,
-      defaultIncrementKg: 1.0,
-      smallestPlatePairKg: 1.0,
-      isBarbell: false,
-    ),
-    Exercise(
-      id: 'leg-extension',
-      name: 'Leg extension',
       category: ExerciseCategory.legs,
       defaultIncrementKg: 1.0,
       smallestPlatePairKg: 1.0,
