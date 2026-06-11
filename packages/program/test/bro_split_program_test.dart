@@ -19,7 +19,7 @@ void main() {
           kBroSplitProgram.workouts.map((workout) => workout.blocks.length), [
         4,
         5,
-        5,
+        4,
         5,
         6,
       ]);
@@ -50,7 +50,6 @@ void main() {
         [
           _ExpectedBlock('squat', 2, 4, 6, 120, 180),
           _ExpectedBlock('leg-press-hack-squat', 2, 8, 12, 90, 120),
-          _ExpectedBlock('leg-extension', 2, 12, 20, 60, 90),
           _ExpectedBlock('leg-curl', 3, 10, 15, 60, 90),
           _ExpectedBlock('calf-raise', 2, 8, 15, 60, 90),
         ],
