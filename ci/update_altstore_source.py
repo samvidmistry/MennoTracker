@@ -129,6 +129,12 @@ def ensure_current_altstore_schema(app: dict) -> None:
             app["screenshotURLs"] = screenshots
         else:
             app["screenshotURLs"] = []
+    # Current AltStore Classic sources require an appPermissions object on every
+    # app, or the source fails to decode ("data isn't in the correct format").
+    # The phone IPA ships no special entitlements or privacy usage strings, so
+    # empty collections match the .ipa and pass AltStore's install-time check.
+    if "appPermissions" not in app:
+        app["appPermissions"] = {"entitlements": [], "privacy": {}}
 
 
 # Legacy AltStore/SideStore clients decode these fields directly off the app
