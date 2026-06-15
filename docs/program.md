@@ -29,7 +29,7 @@ maintaining the main compound lifts with only 2 hard sets each.
 | --- | ---: | ---: | ---: |
 | Bench press | 2 | 4-6 | 2-3 min |
 | Incline machine press | 2 | 8-12 | 90 sec |
-| Pec deck / cable fly | 2 | 12-20 | 60-90 sec |
+| Pec deck / cable fly | 2 | 12-15 | 60-90 sec |
 | Triceps pressdown | 2 | 10-15 | 60-90 sec |
 
 ## Day 2 - Back + Biceps
@@ -39,7 +39,7 @@ maintaining the main compound lifts with only 2 hard sets each.
 | Chest-supported row / barbell row | 2 | 6-8 | 2 min |
 | Neutral-grip lat pulldown | 3 | 8-12 | 90 sec |
 | Cable row | 2 | 10-15 | 90 sec |
-| Reverse pec deck | 2 | 15-25 | 60 sec |
+| Reverse pec deck | 2 | 12-15 | 60 sec |
 | Cable curl | 2 | 10-15 | 60-90 sec |
 
 Use straps if grip limits back work.
@@ -58,8 +58,8 @@ Use straps if grip limits back work.
 | Exercise | Sets | Reps | Rest |
 | --- | ---: | ---: | ---: |
 | Overhead press | 2 | 4-6 | 2-3 min |
-| Cable lateral raise | 3 | 12-20 | 60-90 sec |
-| Reverse pec deck | 2 | 15-25 | 60 sec |
+| Cable lateral raise | 3 | 12-15 | 60-90 sec |
+| Reverse pec deck | 2 | 12-15 | 60 sec |
 | Incline machine press / push-up | 2 | 10-15 | 90 sec |
 | Pulldown / cable row | 2 | 10-15 | 90 sec |
 
@@ -69,10 +69,10 @@ Use straps if grip limits back work.
 | --- | ---: | ---: | ---: |
 | Romanian deadlift | 2 | 6-8 | 2-3 min |
 | Triceps pressdown | 3 | 10-15 | 60-90 sec |
-| Overhead triceps extension | 2 | 12-20 | 60-90 sec |
+| Overhead triceps extension | 2 | 10-15 | 60-90 sec |
 | Preacher curl | 3 | 8-12 | 60-90 sec |
 | Incline curl / cable curl | 2 | 10-15 | 60-90 sec |
-| Optional abs | 2 | 10-20 | 60 sec |
+| Optional abs | 2 | 10-15 | 60 sec |
 
 ## Progression rules
 

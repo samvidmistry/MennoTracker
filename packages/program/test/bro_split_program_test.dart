@@ -31,7 +31,7 @@ void main() {
         [
           _ExpectedBlock('bench-press', 2, 4, 6, 120, 180),
           _ExpectedBlock('incline-machine-press', 2, 8, 12, 90, 90),
-          _ExpectedBlock('pec-deck-cable-fly', 2, 12, 20, 60, 90),
+          _ExpectedBlock('pec-deck-cable-fly', 2, 12, 15, 60, 90),
           _ExpectedBlock('triceps-pressdown', 2, 10, 15, 60, 90),
         ],
       );
@@ -41,7 +41,7 @@ void main() {
           _ExpectedBlock('row', 2, 6, 8, 120, 120),
           _ExpectedBlock('neutral-grip-lat-pulldown', 3, 8, 12, 90, 90),
           _ExpectedBlock('cable-row', 2, 10, 15, 90, 90),
-          _ExpectedBlock('reverse-pec-deck', 2, 15, 25, 60, 60),
+          _ExpectedBlock('reverse-pec-deck', 2, 12, 15, 60, 60),
           _ExpectedBlock('cable-curl', 2, 10, 15, 60, 90),
         ],
       );
@@ -58,8 +58,8 @@ void main() {
         'day-4',
         [
           _ExpectedBlock('overhead-press', 2, 4, 6, 120, 180),
-          _ExpectedBlock('cable-lateral-raise', 3, 12, 20, 60, 90),
-          _ExpectedBlock('reverse-pec-deck', 2, 15, 25, 60, 60),
+          _ExpectedBlock('cable-lateral-raise', 3, 12, 15, 60, 90),
+          _ExpectedBlock('reverse-pec-deck', 2, 12, 15, 60, 60),
           _ExpectedBlock('incline-machine-press-push-up', 2, 10, 15, 90, 90),
           _ExpectedBlock('pulldown-cable-row', 2, 10, 15, 90, 90),
         ],
@@ -69,10 +69,10 @@ void main() {
         [
           _ExpectedBlock('romanian-deadlift', 2, 6, 8, 120, 180),
           _ExpectedBlock('triceps-pressdown', 3, 10, 15, 60, 90),
-          _ExpectedBlock('overhead-triceps-extension', 2, 12, 20, 60, 90),
+          _ExpectedBlock('overhead-triceps-extension', 2, 10, 15, 60, 90),
           _ExpectedBlock('preacher-curl', 3, 8, 12, 60, 90),
           _ExpectedBlock('incline-curl-cable-curl', 2, 10, 15, 60, 90),
-          _ExpectedBlock('optional-abs', 2, 10, 20, 60, 60),
+          _ExpectedBlock('optional-abs', 2, 10, 15, 60, 60),
         ],
       );
     });
