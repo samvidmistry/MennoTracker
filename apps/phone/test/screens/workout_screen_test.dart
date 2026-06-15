@@ -196,6 +196,79 @@ void main() {
     expect(find.textContaining('Exercise 1 of'), findsOneWidget);
     expect(find.text('No workout in progress'), findsNothing);
   });
+
+  testWidgets('exercises can be swiped through during a running workout',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final session = shared.WorkoutSession(
+      id: 'swipe-session',
+      programId: _multiProgram.id,
+      workoutId: _multiWorkout.id,
+      dateUtc: DateTime.utc(2025, 1, 1),
+      startedAt: DateTime.utc(2025, 1, 1, 8),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          programProvider.overrideWithValue(_multiProgram),
+        ],
+        child: MaterialApp(
+          home: WorkoutScreen(
+            session: session,
+            workout: _multiWorkout,
+            suggestedWeightsKg: const {'block-a': 20, 'block-b': 30},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final pagerCenterDx =
+        tester.getCenter(find.byKey(const Key('exercise-pager'))).dx;
+
+    // The first exercise page starts centered in the viewport.
+    expect(
+      (tester.getCenter(find.byKey(const PageStorageKey<String>('exercise-page-block-a'))).dx -
+              pagerCenterDx)
+          .abs(),
+      lessThan(1.0),
+    );
+
+    // Swipe to the next exercise.
+    await tester.drag(
+      find.byKey(const Key('exercise-pager')),
+      const Offset(-800, 0),
+    );
+    await tester.pumpAndSettle();
+
+    // The second exercise page is now centered in the viewport.
+    expect(
+      (tester.getCenter(find.byKey(const PageStorageKey<String>('exercise-page-block-b'))).dx -
+              pagerCenterDx)
+          .abs(),
+      lessThan(1.0),
+    );
+
+    // Swipe back to the first exercise.
+    await tester.drag(
+      find.byKey(const Key('exercise-pager')),
+      const Offset(800, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      (tester.getCenter(find.byKey(const PageStorageKey<String>('exercise-page-block-a'))).dx -
+              pagerCenterDx)
+          .abs(),
+      lessThan(1.0),
+    );
+  });
 }
 
 const _exercise = Exercise(
@@ -231,6 +304,60 @@ const _program = Program(
   schedulePattern: ['A'],
   workouts: [_workout],
   exercises: [_exercise],
+);
+
+const _exerciseA = Exercise(
+  id: 'lift-a',
+  name: 'First lift',
+  category: ExerciseCategory.push,
+  defaultIncrementKg: 2.5,
+  smallestPlatePairKg: 2.5,
+  isBarbell: true,
+);
+
+const _exerciseB = Exercise(
+  id: 'lift-b',
+  name: 'Second lift',
+  category: ExerciseCategory.pull,
+  defaultIncrementKg: 2.5,
+  smallestPlatePairKg: 2.5,
+  isBarbell: true,
+);
+
+const _multiWorkout = Workout(
+  id: 'multi-workout',
+  name: 'Multi Workout',
+  blocks: [
+    ExerciseBlock(
+      id: 'block-a',
+      exerciseId: 'lift-a',
+      minSets: 2,
+      maxSets: 2,
+      repMin: 4,
+      repMax: 6,
+      restMinSeconds: 1,
+      restMaxSeconds: 1,
+    ),
+    ExerciseBlock(
+      id: 'block-b',
+      exerciseId: 'lift-b',
+      minSets: 2,
+      maxSets: 2,
+      repMin: 8,
+      repMax: 12,
+      restMinSeconds: 1,
+      restMaxSeconds: 1,
+    ),
+  ],
+);
+
+const _multiProgram = Program(
+  id: 'multi-program',
+  name: 'Multi Program',
+  weeks: 1,
+  schedulePattern: ['A'],
+  workouts: [_multiWorkout],
+  exercises: [_exerciseA, _exerciseB],
 );
 
 class _RecordingNavigatorObserver extends NavigatorObserver {

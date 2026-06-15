@@ -106,7 +106,6 @@ class WorkoutScreen extends ConsumerStatefulWidget {
 class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     with WidgetsBindingObserver {
   var _currentBlockIndex = 0;
-  var _currentSetIndex = 0;
   var _currentReps = 0;
   var _isResting = false;
   var _readyToFinish = false;
@@ -120,12 +119,14 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
   bool _restCompleted = false;
   bool _restSheetOpen = false;
   NotificationService? _notifications;
+  PageController? _pageController;
 
   @override
   void initState() {
     super.initState();
     _entries = _initialEntries();
     _restoreProgressFromEntries();
+    _pageController = PageController(initialPage: _currentBlockIndex);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -140,6 +141,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     WidgetsBinding.instance.removeObserver(this);
     _restTimer?.cancel();
     _restRemaining.dispose();
+    _pageController?.dispose();
     final notifications = _notifications;
     if (notifications != null) {
       unawaited(notifications.cancelRestLiveActivity());
@@ -161,6 +163,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
         oldWidget.workout.id != widget.workout.id) {
       _entries = _initialEntries();
       _restoreProgressFromEntries();
+      _jumpToCurrentBlock();
     }
   }
 
@@ -171,14 +174,6 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
       return const Scaffold(body: Center(child: Text('No exercises planned.')));
     }
 
-    final block = widget.workout.blocks[_currentBlockIndex];
-    final exercise = program.exerciseById(block.exerciseId);
-    final entry = _entries[_currentBlockIndex];
-    final workingSets = _workingSets(entry);
-    final warmupSets = _warmupSets(entry);
-    final completedSets = workingSets.length;
-    final progress = (_currentBlockIndex + completedSets / block.maxSets) /
-        widget.workout.blocks.length;
     final allSetsDone = _allSetsDone;
 
     final platesButton = FloatingActionButton.extended(
@@ -188,144 +183,16 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
       label: const Text('Plates'),
     );
     final body = SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
-        children: [
-          Text(
-            'Exercise ${_currentBlockIndex + 1} of ${widget.workout.blocks.length} • ${widget.workout.name}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
-          const SizedBox(height: 16),
-          ExerciseCard(
-            block: block,
-            exercise: exercise,
-            suggestedWeightKg: entry.workingWeightKg,
-            setsTarget: block.maxSets,
-            repMin: block.repMin,
-            repMax: block.repMax,
-          ),
-          const SizedBox(height: 8),
-          _WorkoutCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        exercise.name,
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                      ),
-                    ),
-                    InkWell(
-                      key: const Key('working-weight'),
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => _editWeight(entry),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        child: Text(
-                          '${_formatWeight(entry.workingWeightKg)} kg',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${block.repMin}–${block.repMax} reps • rest ${_minutes(block.restMinSeconds)}–${_minutes(block.restMaxSeconds)} min',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 20),
-                if (warmupSets.isNotEmpty) ...[
-                  Text(
-                    'Warm-ups',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final set in warmupSets)
-                        _WarmupChip(reps: set.actualReps),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (var index = 0; index < block.maxSets; index += 1)
-                      SetCircle(
-                        state: _setCircleState(workingSets, index),
-                        reps: index < workingSets.length
-                            ? workingSets[index].actualReps
-                            : null,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                if (!allSetsDone) ...[
-                  Center(
-                    child: NumericRepInput(
-                      key: ValueKey('${block.id}-$_currentSetIndex'),
-                      initialValue: _currentReps,
-                      onChanged: (value) => _currentReps = value,
-                      onDone: (_) => _recordSet(failed: false),
-                      onLongPressFail: (_) => _recordSet(failed: true),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _DoneSetButton(
-                    isResting: _isResting,
-                    onTap: () => _recordSet(failed: false),
-                    onLongPress: () => _recordSet(failed: true),
-                    onShowTimer: _reopenRestSheet,
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: TextButton.icon(
-                      key: const Key('add-warmup-set'),
-                      onPressed: _isResting ? null : _recordWarmupSet,
-                      icon: const Icon(Icons.whatshot_outlined),
-                      label: const Text('Add warm-up set'),
-                    ),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 60,
-                    child: FilledButton.icon(
-                      key: const Key('finish-workout'),
-                      onPressed: _finishWorkout,
-                      icon: const Icon(Icons.check_circle),
-                      label: const Text('Finish Workout'),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+      child: PageView.builder(
+        key: const Key('exercise-pager'),
+        controller: _pageController,
+        physics: _isResting
+            ? const NeverScrollableScrollPhysics()
+            : const PageScrollPhysics(),
+        onPageChanged: _onPageChanged,
+        itemCount: widget.workout.blocks.length,
+        itemBuilder: (context, index) =>
+            _buildExercisePage(context, program, index),
       ),
     );
 
@@ -359,6 +226,216 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     );
   }
 
+  Widget _buildExercisePage(
+    BuildContext context,
+    Program program,
+    int index,
+  ) {
+    final block = widget.workout.blocks[index];
+    final exercise = program.exerciseById(block.exerciseId);
+    final entry = _entries[index];
+    final workingSets = _workingSets(entry);
+    final warmupSets = _warmupSets(entry);
+    final completedSets = workingSets.length;
+    final progress = (index + completedSets / block.maxSets) /
+        widget.workout.blocks.length;
+    final isCurrent = index == _currentBlockIndex;
+    final blockSetsDone = workingSets.length >= block.maxSets;
+    final allSetsDone = _allSetsDone;
+    final isLastBlock = index == widget.workout.blocks.length - 1;
+    final repsValue = isCurrent ? _currentReps : _defaultRepsFor(block, entry);
+
+    return ListView(
+      key: PageStorageKey<String>('exercise-page-${block.id}'),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
+      children: [
+        Text(
+          'Exercise ${index + 1} of ${widget.workout.blocks.length} • ${widget.workout.name}',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(value: progress.clamp(0, 1).toDouble()),
+        const SizedBox(height: 16),
+        ExerciseCard(
+          block: block,
+          exercise: exercise,
+          suggestedWeightKg: entry.workingWeightKg,
+          setsTarget: block.maxSets,
+          repMin: block.repMin,
+          repMax: block.repMax,
+        ),
+        const SizedBox(height: 8),
+        _WorkoutCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      exercise.name,
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                    ),
+                  ),
+                  InkWell(
+                    key: const Key('working-weight'),
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _editWeight(index),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        '${_formatWeight(entry.workingWeightKg)} kg',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${block.repMin}–${block.repMax} reps • rest ${_minutes(block.restMinSeconds)}–${_minutes(block.restMaxSeconds)} min',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 20),
+              if (warmupSets.isNotEmpty) ...[
+                Text(
+                  'Warm-ups',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final set in warmupSets)
+                      _WarmupChip(reps: set.actualReps),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (var i = 0; i < block.maxSets; i += 1)
+                    SetCircle(
+                      state: _setCircleStateFor(workingSets, i, block.maxSets),
+                      reps: i < workingSets.length
+                          ? workingSets[i].actualReps
+                          : null,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              if (!blockSetsDone) ...[
+                Center(
+                  child: NumericRepInput(
+                    key: ValueKey('${block.id}-${workingSets.length}'),
+                    initialValue: repsValue,
+                    onChanged: (value) => _currentReps = value,
+                    onDone: (_) => _recordSet(failed: false),
+                    onLongPressFail: (_) => _recordSet(failed: true),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _DoneSetButton(
+                  isResting: _isResting,
+                  onTap: () => _recordSet(failed: false),
+                  onLongPress: () => _recordSet(failed: true),
+                  onShowTimer: _reopenRestSheet,
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton.icon(
+                    key: const Key('add-warmup-set'),
+                    onPressed: _isResting ? null : _recordWarmupSet,
+                    icon: const Icon(Icons.whatshot_outlined),
+                    label: const Text('Add warm-up set'),
+                  ),
+                ),
+              ] else if (allSetsDone && isLastBlock) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: FilledButton.icon(
+                    key: const Key('finish-workout'),
+                    onPressed: _finishWorkout,
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Finish Workout'),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    allSetsDone
+                        ? 'All sets done. Swipe to the last exercise to finish.'
+                        : 'All sets done. Swipe to the next exercise.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _onPageChanged(int index) {
+    if (index == _currentBlockIndex) {
+      return;
+    }
+    setState(() {
+      _currentBlockIndex = index;
+      _currentReps = _defaultRepsForCurrentSet();
+      _readyToFinish = _allSetsDone;
+    });
+  }
+
+  void _syncPageController() {
+    final controller = _pageController;
+    if (controller == null || !controller.hasClients) {
+      return;
+    }
+    if (controller.page?.round() == _currentBlockIndex) {
+      return;
+    }
+    controller.animateToPage(
+      _currentBlockIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _jumpToCurrentBlock() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = _pageController;
+      if (!mounted || controller == null || !controller.hasClients) {
+        return;
+      }
+      controller.jumpToPage(_currentBlockIndex);
+    });
+  }
+
   List<shared.ExerciseEntry> _initialEntries() {
     final entriesByBlock = {
       for (final entry in widget.initialEntries) entry.blockId: entry,
@@ -386,7 +463,6 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     _isResting = false;
     _readyToFinish = false;
     _currentBlockIndex = 0;
-    _currentSetIndex = 0;
     _currentReps = 0;
 
     if (widget.workout.blocks.isEmpty || _entries.isEmpty) {
@@ -398,14 +474,12 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
       final entry = _entries[index];
       if (_workingSets(entry).length < block.maxSets) {
         _currentBlockIndex = index;
-        _currentSetIndex = _workingSets(entry).length;
         _currentReps = _defaultRepsFor(block, entry);
         return;
       }
     }
 
     _currentBlockIndex = widget.workout.blocks.length - 1;
-    _currentSetIndex = _workingSets(_entries[_currentBlockIndex]).length;
     _readyToFinish = true;
     _currentReps = _defaultRepsForCurrentSet();
   }
@@ -415,11 +489,15 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
         ?.call(List<shared.ExerciseEntry>.unmodifiable(_entries));
   }
 
-  SetState _setCircleState(List<shared.SetLog> workingSets, int index) {
+  SetState _setCircleStateFor(
+    List<shared.SetLog> workingSets,
+    int index,
+    int maxSets,
+  ) {
     if (index < workingSets.length) {
       return workingSets[index].isFailed ? SetState.failed : SetState.done;
     }
-    if (index == _currentSetIndex && !_readyToFinish) {
+    if (index == workingSets.length && workingSets.length < maxSets) {
       return SetState.inProgress;
     }
     return SetState.pending;
@@ -438,7 +516,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     return true;
   }
 
-  Future<void> _editWeight(shared.ExerciseEntry entry) async {
+  Future<void> _editWeight(int index) async {
+    final entry = _entries[index];
     final value = await showDialog<double>(
       context: context,
       builder: (context) => _WeightDialog(
@@ -450,7 +529,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
       return;
     }
     setState(() {
-      _entries[_currentBlockIndex] = entry.copyWith(workingWeightKg: value);
+      _entries[index] = entry.copyWith(workingWeightKg: value);
     });
     _notifyEntriesChanged();
   }
@@ -474,7 +553,6 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
 
     setState(() {
       _entries[_currentBlockIndex] = updatedEntry;
-      _currentSetIndex = _workingSets(updatedEntry).length;
       _readyToFinish = _allSetsDone;
     });
     _notifyEntriesChanged();
@@ -713,16 +791,16 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen>
     final entry = _entries[_currentBlockIndex];
     setState(() {
       _isResting = false;
-      if (_workingSets(entry).length < block.maxSets) {
-        _currentSetIndex = _workingSets(entry).length;
-      } else if (_currentBlockIndex < widget.workout.blocks.length - 1) {
-        _currentBlockIndex += 1;
-        _currentSetIndex = 0;
-      } else {
-        _readyToFinish = true;
+      if (_workingSets(entry).length >= block.maxSets) {
+        if (_currentBlockIndex < widget.workout.blocks.length - 1) {
+          _currentBlockIndex += 1;
+        } else {
+          _readyToFinish = true;
+        }
       }
       _currentReps = _defaultRepsForCurrentSet();
     });
+    _syncPageController();
   }
 
   int _defaultRepsForCurrentSet() {
