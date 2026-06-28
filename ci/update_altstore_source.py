@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 import plistlib
@@ -50,6 +51,14 @@ def read_info_plist(ipa_path: Path) -> dict:
             return plistlib.load(fp)
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fp:
+        for chunk in iter(lambda: fp.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def build_version_entry(
     ipa_path: Path,
     tag: str,
@@ -68,12 +77,16 @@ def build_version_entry(
     if date_iso is None:
         date_iso = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    sha256 = file_sha256(ipa_path)
+    download_url = f"https://github.com/{repo}/releases/download/{tag}/{asset_name}?altstore={sha256[:12]}"
+
     entry: dict = {
         "version": version,
         "buildVersion": build_version,
         "date": date_iso,
         "size": ipa_path.stat().st_size,
-        "downloadURL": f"https://github.com/{repo}/releases/download/{tag}/{asset_name}",
+        "downloadURL": download_url,
+        "sha256": sha256,
         "minOSVersion": min_os,
     }
     if release_notes:

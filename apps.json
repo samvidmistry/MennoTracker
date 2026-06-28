@@ -23,7 +23,7 @@
       "versionDate": "2026-06-10T02:35:19Z",
       "versionDescription": "Latest release.",
       "size": 9116010,
-      "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.4.0/MennoTracker.ipa",
+      "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.4.0/MennoTracker.ipa?altstore=4bf46f79bdf3",
       "minOSVersion": "13.0",
       "versions": [
         {
@@ -31,7 +31,8 @@
           "buildVersion": "10",
           "date": "2026-06-10T02:35:19Z",
           "size": 9116010,
-          "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.4.0/MennoTracker.ipa",
+          "downloadURL": "https://github.com/samvidmistry/MennoTracker/releases/download/v0.4.0/MennoTracker.ipa?altstore=4bf46f79bdf3",
+          "sha256": "4bf46f79bdf3d0696133312f35f390a4f2bf38a2337c16d62c9657c20051de00",
           "minOSVersion": "13.0"
         },
         {
