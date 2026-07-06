@@ -142,14 +142,18 @@ def ensure_current_altstore_schema(app: dict) -> None:
             app["screenshotURLs"] = screenshots
         else:
             app["screenshotURLs"] = []
-    # Current AltStore Classic sources require an appPermissions object on every
-    # app, or the source fails to decode ("data isn't in the correct format").
-    # The phone IPA ships no special entitlements or privacy usage strings, so
-    # an empty appPermissions object is correct AND decodes across every AltStore
-    # variant. Do NOT add empty `entitlements`/`privacy` sub-keys: Classic decodes
-    # them as arrays while newer/PAL builds decode `privacy` as a dict, so any
-    # concrete empty value breaks one of them ("data isn't in the correct
-    # format"). Omitting the sub-keys keeps both optional/absent -> always valid.
+    # VERIFIED-CORRECT FORMAT: an empty appPermissions object ({}) with NO
+    # sub-keys. This decodes across every AltStore variant and is the officially
+    # documented empty form. AltStore Classic requires the key to be present on
+    # every app (a missing/mismatched value fails with the useless error
+    # "data isn't in the correct format").
+    #
+    # Do NOT add empty `entitlements`/`privacy` sub-keys: Classic decodes them as
+    # arrays while newer/PAL builds decode `privacy` as a dict, so ANY concrete
+    # empty value ([] or {}) breaks one of the two variants. Omitting the
+    # sub-keys keeps both optional/absent -> always valid. Only add real entries
+    # if the IPA actually ships entitlements/privacy usage strings (it doesn't).
+    # See docs/altstore-setup.md "not in the correct format" for the full story.
     if "appPermissions" not in app:
         app["appPermissions"] = {}
 

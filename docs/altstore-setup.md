@@ -304,6 +304,52 @@ Manual refresh is simple:
 
 ## Troubleshooting
 
+### Source fails to load / install: "The data couldn't be read because it isn't in the correct format"
+
+This is a **source-manifest (`apps.json`) decode error**, not a device or
+signing problem. AltStore parses the source with Swift `Codable`; any field
+whose *type* doesn't match its model throws this exact (unhelpful) message and
+aborts the whole source.
+
+**Verified-correct format for `appPermissions` (do not change without reason):**
+
+```json
+"appPermissions": {}
+```
+
+Use an **empty object with no sub-keys**. This is the officially-documented
+empty form and it decodes across *every* AltStore variant. Do NOT write
+`"appPermissions": {"entitlements": [], "privacy": []}` or
+`{"entitlements": [], "privacy": {}}`:
+
+- **AltStore Classic** (pairs with AltServer) decodes `entitlements` and
+  `privacy` as **arrays** of permission objects, so `privacy: {}` fails.
+- **Newer / AltStore PAL** decodes `privacy` as a **dictionary**, so
+  `privacy: []` fails.
+- Any concrete empty value breaks one of the two. Omitting the sub-keys leaves
+  both fields optional/absent, so nothing can mismatch.
+
+Only add real `entitlements`/`privacy` entries if the IPA actually ships them
+(this app ships none — no entitlements in the binary, no `NS*UsageDescription`
+keys in `Info.plist`). `ci/update_altstore_source.py` already writes `{}` by
+default; keep it that way.
+
+> **CDN cache gotcha (this wastes the most time):** `raw.githubusercontent.com`
+> caches for ~5 minutes and **ignores `?cachebust=` query strings**. After
+> pushing an `apps.json` fix, AltStore will keep fetching the *old* copy for up
+> to 5 minutes, so re-adding the source immediately shows the *same* error even
+> though the fix is live in the repo. To verify the real content, query the
+> GitHub API (not cached):
+>
+> ```bash
+> curl -s "https://api.github.com/repos/samvidmistry/MennoTracker/contents/apps.json?ref=master" \
+>   -H "Accept: application/vnd.github.raw"
+> ```
+>
+> Then wait for the raw URL to flip over before re-testing in AltStore. A clean
+> retry is: remove the source, force-quit AltStore (clears its URL cache),
+> re-add the source.
+
 ### AltStore can't see my iPhone
 
 Check these items in order:
