@@ -14,10 +14,7 @@
       "category": "utilities",
       "screenshots": [],
       "screenshotURLs": [],
-      "appPermissions": {
-        "entitlements": [],
-        "privacy": []
-      },
+      "appPermissions": {},
       "version": "0.4.0",
       "buildVersion": "10",
       "versionDate": "2026-06-10T02:35:19Z",
