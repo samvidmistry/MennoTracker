@@ -16,7 +16,7 @@
       "screenshotURLs": [],
       "appPermissions": {
         "entitlements": [],
-        "privacy": {}
+        "privacy": []
       },
       "version": "0.4.0",
       "buildVersion": "10",
